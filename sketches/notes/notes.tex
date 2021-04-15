@@ -1,0 +1,149 @@
+\documentclass{article}
+
+\usepackage[margin=1in,a4paper]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{tabularx}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{nicefrac}
+\usepackage{sectsty}
+\usepackage{graphicx}
+\usepackage[T1]{fontenc}
+\usepackage{epigraph} %quotes
+\usepackage{amssymb} %math symbols
+\usepackage{mathtools} %more math stuff
+\usepackage{amsthm} %theorems, proofs and lemmas
+\usepackage{optidef} %fast optimization problem notation
+\usepackage[backend=bibtex, style=numeric]{biblatex}
+
+\usepackage[ruled,vlined,noend,linesnumbered]{algorithm2e} %algoritms/pseudocode
+\let\oldnl\nl% Store \nl in \oldnl
+\newcommand{\nonl}{\renewcommand{\nl}{\let\nl\oldnl}}% Remove line number for one specific line in algorithm
+
+\usepackage{tikz}
+
+
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+%% declaring abs so that it works nicely
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}%
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}%
+
+% Swap the definition of \abs* and \norm*, so that \abs
+% and \norm resizes the size of the brackets, and the 
+% starred version does not.
+\makeatletter
+\let\oldabs\abs
+\def\abs{\@ifstar{\oldabs}{\oldabs*}}
+%
+\let\oldnorm\norm
+\def\norm{\@ifstar{\oldnorm}{\oldnorm*}}
+\makeatother
+
+%% Theorem notation
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{corollary}{Corollary}[theorem]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{problem}{Problem}[section]
+\newtheorem{definition}{Definition}[section]
+\newtheorem{claim}{Claim}[section]
+
+\pagestyle{fancy}
+\fancyhf{}
+\title{A predictive method for full-pose predictive distributed leader-follower formation control for non-holonomic robots}
+\author{Titouan Renard, 2021}
+\rfoot{Page \thepage}
+
+\bibliography{biblio}
+
+\begin{document}
+
+\maketitle
+
+\section{Problem Statement}
+
+We have a team of $N$ differential-wheeled robots $\mathcal{R}_1, ..., \mathcal{R}_n$ described by the kinematic equations (the robot's dynamics are neglected) :
+\begin{align}
+    \dot{f}(\vec{x},\vec{u}) = 
+    \begin{cases}
+        \dot{x}_i = u_i \cos \theta_i \\
+        \dot{y}_i = u_i \sin \theta_i \\
+        \dot{\theta}_i = \omega_i
+    \end{cases}.
+\end{align}
+Where $\vec{u}_i = [u_i,\omega_i]^T$ is the control input vector of $\mathcal{R}_i$ with $u_i$ linear translational speed and $\omega_i$ rotational speed. And where $\vec{x}_i = [x_i,y_i,\theta_i]^T$ is the pose vector of $\mathcal{R}_i$. We denote the full pose and control input of the system as :
+\begin{align}
+    \vec{x} = [x_1,y_1,\theta_1,x_2,y_2,\theta_2,...,x_N,y_N,\theta_N]^T \\
+    \vec{u} = [u_1,\omega_1,u_2,\omega_2,...,u_N,\omega_N]^T
+\end{align}
+We denote $\textbf{R} = \{\mathcal{R}_1, ..., \mathcal{R}_n\}$ the set of all robots. Each robot $\mathcal{R}_i$ has a set of \textit{neighboring robots} $\mathcal{N}_i \subseteq \textbf{R}$, which contains the set of robots for which $\mathcal{R}_i$ can get a position estimation. The pose of $\mathcal{R}_j$ estimated by $\mathcal{R}_i$ is given by a range $\rho_{ij}$ and a bearing $\alpha_{ij}$. Each pose estimation is affected by noise which is denoted $\epsilon_z$ and is denoted by a vector  :
+\begin{align}
+    z_{ij} = \begin{bmatrix}
+        \tilde{\rho}_{ij} \\
+        \tilde{\alpha}_{ij} 
+    \end{bmatrix}
+    = \begin{bmatrix}
+        {\rho}_{ij} \\
+        {\alpha}_{ij} 
+    \end{bmatrix} + \epsilon_z.
+\end{align}
+At time $t$ robot $\mathcal{R}_i$ gathers an observation list :
+\begin{align}
+    \mathcal{Z}_i = \{z_{ij} | \mathcal{R_j} \in \mathcal{N}_i\}.
+\end{align}
+Our goal is to have robots $\mathcal{R}_2, ... , \mathcal{R}_N$ (that we call \textit{followers}) maintain formation with the robot $\mathcal{R}_1$ (which we call \textit{leader}) while avoiding obstacles in their trajectories. We look for a control law that can be implemented in a distributed fashion for robots $\mathcal{R}_2, ... , \mathcal{R}_N$, while the control law of $\mathcal{R}_1$ is defined arbitrarily. 
+\BlankLine
+The formation is defined by a set of \textit{biases} $\vec{\beta}_{i} = [\delta^x_i,\delta^x_j,\delta^\theta_i]^T$, $\forall i = 2...N$ which denotes the expected pose of $\mathcal{R}_i$ relative to $\mathcal{R}_1$ within the formation. We can thus express the \textit{pose error} $\bar{x}_i$ for $\mathcal{R}_i$ as :
+\begin{align}
+    \bar{x}_i = \vec{x}_i - \vec{\beta}_i = \begin{bmatrix}
+         x_i - \delta^x_i \\
+         y_i - \delta^y_i \\
+        \theta_i - \delta^\theta_i 
+    \end{bmatrix}
+\end{align}
+
+The problem of maintaining formation thus becomes the problem of reducing the \textit{total pose error} $\mathcal{E} = \sum_{2...N} \norm{\vec{e_i}}$ in a distributed fashion.
+
+\section{Laplacian-based feedback for formation control}
+
+Let $G=(\textbf{R},\textbf{E})$ be an undirected graph constructed such that 
+\begin{enumerate}
+    \item it's vertex set $\textbf{R} = \{ \mathcal{R}_1, ..., \mathcal{R}_n \}$ contains every single robot in the team
+    \item it's edges set contains an arbitrarily oriented edge for each robot in line of sight of another 
+    \[ \textbf{E}  = \{ (\mathcal{R}_i,\mathcal{R}_j) | \mathcal{R}_j \in \mathcal{N}_i \}. \]
+\end{enumerate}
+
+Let $\mathcal{I}$ denote the \textit{incidence} matrix (with arbitrary orientations) of $G$ and $\mathcal{W}$ it's weight matrix. We compute the \textit{weighted laplacian matrix} of $G$ as follows :
+\[ \mathcal{L} = \mathcal{I} \cdot \mathcal{W} \cdot \mathcal{I}^T \]
+Note that the \textit{weighted laplacian matrix} $\mathcal{L}$ is constructed in such a way that :
+\begin{align}
+    \dot{\vec{x}} = - \mathcal{L} x(t) \\
+    \dot{x_i} = \sum_{\mathcal{R}_j \in \mathcal{N}_i} w_{ij} (x_j-x_i)
+\end{align}
+
+A standard approach to formation control is to implement a Laplacian based feedback equation (which can be tough of as a PI controller) such as: 
+\begin{align}
+    \dot{x} = - \mathcal{L} \bar{x} + K_I \int_0^t \mathcal{L}(\tau) \bar{x}(\tau) d\tau
+\end{align}
+
+\subsection{Predictive approach to the laplacian-based formation control problem}
+We propose to apply an optimization based predictive control law to our robots : 
+
+\begin{mini}
+    {u}{J(\vec{u}) = \int^{t+\tau}_{t} L(\tau,\vec{x},\vec{u}) + V(t+T,\vec{x})}{}{}
+    \addConstraint{}{\dot{f}(\vec{x},\vec{u})}{}{}
+\end{mini}
+
+
+\printbibliography
+
+\end{document}  
