@@ -374,7 +374,24 @@ double loc_get_heading()
   return heading;
 }
 
-
+// Output functions
+pose_t get_pose()
+{
+	switch(MODE)
+	{
+		case ODOM:
+			return _pose_enc;
+		case ODOM_ACC:
+			return _pose_acc;
+		case GPS:
+			return _pose_gps;
+		case KALMAN:
+			return _pose_kalman;
+		default:
+			//should never be reached, but if so let's just say it's a kalman
+			return _pose_kalman;
+	}
+}
 //LOG function
 void loc_print_log(double time)
 {
