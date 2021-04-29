@@ -1,5 +1,5 @@
 /*****************************************************************************/
-/* File:         flocking1_supper.c                                          */
+/* File:         supervisor.c                                          */
 /* Version:      2.0                                                         */
 /* Date:         10-Oct-14 -- 06-Oct-2015                                    */
 /* Description:  The supervisor of a flock of robots which takes care of     */
@@ -19,7 +19,7 @@
 #include <webots/emitter.h>
 #include <webots/supervisor.h>
 
-#define ROBOTS 4
+#define ROBOTS 2
 
 static WbNodeRef robs[ROBOTS];
 static WbFieldRef robs_translation[ROBOTS];
@@ -29,20 +29,24 @@ WbDeviceTag emitter_device;
 double loc[ROBOTS][4];
 
 /* Good relative positions for each robot */
-double good_rp[ROBOTS][2] = { {0.0,0.0}, {0.0,-0.30}, {-0.15,-0.15}, {0.15,-0.15} };
+double good_rp[ROBOTS][2] = { {0.0,0.0}, {0.0,-0.30}};
 
 void reset(void) {
+
 	wb_robot_init();
 
-	char rob[7] = "epuck1";
+	char rob[7] = "epuck0";
 	char emitter0[8] = "emitter";
 	int i;
 	robs[0] = wb_supervisor_node_get_from_def(rob);
+
+
 	robs_translation[0] = wb_supervisor_node_get_field(robs[0],"translation");
 	robs_rotation[0] = wb_supervisor_node_get_field(robs[0],"rotation");
 
 	rob[5]++;
 	for (i=1;i<ROBOTS;i++) {
+
 		robs[i] = wb_supervisor_node_get_from_def(rob);
 		robs_translation[i] = wb_supervisor_node_get_field(robs[i],"translation");
 		robs_rotation[i] = wb_supervisor_node_get_field(robs[i],"rotation");    
@@ -79,6 +83,7 @@ int main(int argc, char *args[]) {
 		/* Send relative positions to followers */
 		err = 0.0;
 		for (i=1;i<ROBOTS;i++) {
+			
 			/* Get data */
 			loc[0][0] = wb_supervisor_field_get_sf_vec3f(robs_translation[0])[0];
 			loc[0][1] = wb_supervisor_field_get_sf_vec3f(robs_translation[0])[1];
@@ -103,6 +108,7 @@ int main(int argc, char *args[]) {
 			while (buffer[2] < -M_PI) buffer[2] += 2.0*M_PI;
 			if (cnt % send_interval == 0){
 				wb_emitter_send(emitter_device,(char *)buffer,4*sizeof(float));        
+				
 			}
 
 			/* Check error in position of robot */

@@ -54,7 +54,6 @@ static void reset(void) {
 	wb_robot_init();
 
 	receiver    = wb_robot_get_device("receiver");
-
 	/*Webots 2018b*/
 	//get motors
 	left_motor = wb_robot_get_device("left wheel motor");
@@ -121,13 +120,16 @@ int main(){
 	reset();                          // Initialization 
 	for(i=0;i<NB_SENSORS;i++)
 		wb_distance_sensor_enable(ds[i],64);
-	wb_receiver_enable(receiver,64); 
+	wb_receiver_enable(receiver,64);
+	
+	
 
 	//read the initial packets
 	initialized = 0;
 	while(!initialized){
 		/* Wait until supervisor sent range and bearing information */
 		while (wb_receiver_get_queue_length(receiver) == 0) {
+			printf("waiting for supervisor\n"); 
 			wb_robot_step(64); // Executing the simulation for 64ms
 		}  
 		if (wb_receiver_get_queue_length(receiver) > 0) {
@@ -147,7 +149,6 @@ int main(){
 		}
 	}
 	msl=0; msr=0;  
-
 	for(;;){
 		int sensor_nb;
 		int bmsl = 0;
@@ -160,6 +161,7 @@ int main(){
 		}
 		bmsl /= 400; bmsr /= 400;        // Normalizing speeds
 
+
 		if (wb_receiver_get_queue_length(receiver) > 0) {
 			rbbuffer = (float*) wb_receiver_get_data(receiver);
 			if((int)rbbuffer[0]==robot_id){
@@ -167,7 +169,7 @@ int main(){
 				new_leader_bearing = -atan2(rbbuffer[1],rbbuffer[2]);
 				new_leader_orientation = rbbuffer[3];
 				update_leader_measurement(new_leader_range, new_leader_bearing, new_leader_orientation);
-				//printf("%d: Leader: r:%f gr:%f, b:%f gb:%f, o:%f\n", new_leader_range, goal_range, new_leader_bearing, goal_bearing, new_leader_orientation);
+				// printf("%d: Leader: r:%f gr:%f, b:%f gb:%f, o:%f\n", new_leader_range, goal_range, new_leader_bearing, goal_bearing, new_leader_orientation);
 			}
 			wb_receiver_next_packet(receiver);
 		}
