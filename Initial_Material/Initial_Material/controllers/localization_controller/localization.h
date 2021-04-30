@@ -29,7 +29,7 @@ void loc_update_measures();
 
 void loc_compute_pose();
 
-pose_t get_pose();
+pose_t loc_get_pose();
 
 void loc_print_log(double time);
 

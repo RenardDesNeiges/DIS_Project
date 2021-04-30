@@ -9,5 +9,5 @@ void trajectory_1(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor);
 void trajectory_2(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor);
 
 // ## but you can add your own trajectories if you like.
-
+void trajectory_1_delay(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor,int init_time);
 #endif

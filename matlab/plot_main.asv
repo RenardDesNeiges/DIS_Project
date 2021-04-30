@@ -39,7 +39,7 @@ odo.vx      = zeros(N_SIM + 1,1);
 
 % Compute the static biais (mean)
 acc_mean = 0.01; %as the trajectories does not allow calibration, the mean acc is considered as 0
-acc_mean = mean(data.acc(1:313,:));
+acc_mean = mean(data.acc(1/T:5/T,:));
 % Compute the odometry
 for t_ = T_SIM
     [odo.x(t_ + 1), odo.vx(t_ + 1)] = ...

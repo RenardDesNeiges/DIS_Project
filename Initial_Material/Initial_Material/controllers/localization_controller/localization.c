@@ -34,7 +34,7 @@ static sensors_t   		_sensors;
 static measurement_t 	_meas;
 static pose_t        	_pose_gps, _pose_acc, _pose_enc, _pose_kalman;
 static pose_t        	_pose_origin = {-0.0, 0.0, 0.0};
-double last_gps_time_s = 1.1f;
+double last_gps_time_s = -1.1f;
 static FILE *fp;
 
 /* FUNCTIONS */
@@ -212,6 +212,7 @@ void loc_calibrate(int time_init, int time_step)
 	{
 		case ODOM_ACC:
 		case KALMAN:
+			loc_update_measures();
 			loc_compute_mean_acc(time_init,time_step);
 			break;
 	}
@@ -225,7 +226,7 @@ static void loc_compute_mean_acc(int time_init,int time_step)
 	static int count = 0;
 
 	count++;
-
+	
 	if( count > 20 ) // Remove the effects of strong acceleration at the begining
 	{
 		for(int i = 0; i < 3; i++)  
@@ -375,7 +376,7 @@ double loc_get_heading()
 }
 
 // Output functions
-pose_t get_pose()
+pose_t loc_get_pose()
 {
 	switch(MODE)
 	{

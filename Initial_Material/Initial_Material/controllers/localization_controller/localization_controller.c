@@ -19,14 +19,8 @@
 #define MAX_SPEED 1000          // Maximum speed 
 #define INC_SPEED 5             // Increment not expressed in webots 
 #define MAX_SPEED_WEB 6.28      // Maximum speed webots
-#define TIME_INIT 0		        // Time in second
+#define TIME_INIT 5		        // Time in second
 
-/*VERBOSE_FLAGS*/
-#define VERBOSE_GPS false        // Print GPS values
-#define VERBOSE_ACC false       // Print accelerometer values
-#define VERBOSE_ACC_MEAN false  // Print accelerometer mean values
-#define VERBOSE_POSE false      // Print pose values
-#define VERBOSE_ENC true       // Print encoder values
 
 
 /*DEFINITIONS*/
@@ -73,6 +67,7 @@ int main()
 		if(wb_robot_get_time() < TIME_INIT)
 		{
 			loc_calibrate(TIME_INIT,_robot.time_step);
+			controller_print_log(wb_robot_get_time());
 		}
 		else
 		{
@@ -82,9 +77,9 @@ int main()
 			loc_compute_pose();
 			
 			// Use one of the two trajectories.
-			trajectory_1(_robot.left_motor, _robot.right_motor);
+			//trajectory_1(_robot.left_motor, _robot.right_motor);
 			//    trajectory_2(dev_left_motor, dev_right_motor);
-			
+			trajectory_1_delay(_robot.left_motor, _robot.right_motor,TIME_INIT);
 			// Logging Step
 			controller_print_log(wb_robot_get_time());
 
