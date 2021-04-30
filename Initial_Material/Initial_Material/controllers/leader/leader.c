@@ -31,7 +31,7 @@
 #define VERBOSE_ENC true       // Print encoder values
 
 #define NB_SENSORS 8
-#define DETECT_RANGE 300
+#define DETECT_RANGE 200
 #define TIME_STEP 64
 
 WbDeviceTag ps[NB_SENSORS]; // list of distance sensor handles
@@ -74,8 +74,8 @@ void compute_wheel_speeds(double u_x, double u_y, int *msl, int *msr) {
 	double heading_error = atan2(u_y, u_x);
 	double distance = sqrt(pow(u_x, 2) + pow(u_y, 2));
 	// Convert to wheel speeds!
-	*msl = (int) (distance-heading_error/M_PI)*MAX_SPEED_WEB;
-	*msr = (int) (distance+heading_error/M_PI)*MAX_SPEED_WEB;
+	*msl = (int) (distance-heading_error/M_PI)*MAX_SPEED_WEB*0.7;
+	*msr = (int) (distance+heading_error/M_PI)*MAX_SPEED_WEB*0.7;
 }
 
 
@@ -195,8 +195,8 @@ int main()
 			proximity_vector(&s_x, &s_y); // get sensor proximity vectorproximity_vector(&u_x, &u_y); // get sensor proximity vector
 
 			// Control vector is a linear combination of navigation and sensors for obstacle avoidance
-			u_x = n_x-s_x;
-			u_y = n_y-s_y;
+			u_x = n_x-10*s_x;
+			u_y = n_y-10*s_y;
 
 			// Saturate the norm of command vector at 1
 			u_norm = sqrt(pow(u_x, 2) + pow(u_y, 2));
@@ -205,7 +205,7 @@ int main()
 				u_y /= u_norm;
 			}
 
-			printf("%f , %f\n", u_x, u_y);
+			// printf("%f , %f\n", u_x, u_y);
 
 
 			// outputing the control vector to the wheel speed (vector must of of norm <=1)
