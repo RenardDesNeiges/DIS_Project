@@ -69,15 +69,27 @@ void odo_compute_encoders(pose_t* odo, double Aleft_enc, double Aright_enc)
 	double omega = (Aright_enc-Aleft_enc)/WHEEL_AXIS/_T;
 
 	double speed =  (Aright_enc+Aleft_enc)/2/_T;
+	
+	
+	// Compute heading speed	
+	double omega_w  = omega;
+	// Use mid-way heading value for speed computation	
+	double mid_way_heading = 0.5*_odo_pose_enc.heading + omega_w*_T;
+	// Update heading
+	_odo_pose_enc.heading += omega_w*_T;
+
+	
+	
+	
+	
 
 	
 	//  Compute the speed into the world frame (A) 
 	
-	double speed_wx = cos(_odo_pose_enc.heading)*speed;
+	double speed_wx = cos(mid_way_heading)*speed;
 
-	double speed_wy = sin(_odo_pose_enc.heading)*speed;
+	double speed_wy = sin(mid_way_heading)*speed;
 
-	double omega_w  = omega;
 
 
 	// Integration : Euler method
@@ -86,12 +98,12 @@ void odo_compute_encoders(pose_t* odo, double Aleft_enc, double Aright_enc)
 
 	 _odo_pose_enc.y = _odo_pose_enc.y+speed_wy*_T;
 
-	_odo_pose_enc.heading += omega_w*_T;
 
-	memcpy(odo, &_odo_pose_enc, sizeof(pose_t));
 
-	if(VERBOSE_ODO_ENC)
-    	printf("ODO with wheel encoders : %g %g %g\n", odo->x , odo->y , RAD2DEG(odo->heading) );
+	 memcpy(odo, &_odo_pose_enc, sizeof(pose_t));
+
+	 if(VERBOSE_ODO_ENC)
+            	 printf("ODO with wheel encoders : %g %g %g\n", odo->x , odo->y , RAD2DEG(odo->heading) );
 }
 
 /**
