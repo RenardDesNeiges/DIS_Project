@@ -3,6 +3,7 @@
 \usepackage[margin=1in,a4paper]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage{bm}
 \usepackage{lmodern}
 \usepackage{tabularx}
 \usepackage{fancyhdr}
@@ -12,10 +13,11 @@
 \usepackage{graphicx}
 \usepackage[T1]{fontenc}
 \usepackage{epigraph} %quotes
-\usepackage{amssymb} %math symbols
+\usepackage{amsmath, amssymb} %math symbols
 \usepackage{mathtools} %more math stuff
 \usepackage{amsthm} %theorems, proofs and lemmas
 \usepackage{optidef} %fast optimization problem notation
+\usepackage{nicefrac}
 \usepackage[backend=bibtex, style=numeric]{biblatex}
 
 \usepackage[ruled,vlined,noend,linesnumbered]{algorithm2e} %algoritms/pseudocode
@@ -33,6 +35,25 @@
     linkcolor=black,
     urlcolor=black
 }
+
+%% Some shorthands
+\newcommand{\1}{\bm{1}} % vector 1 in bold
+\newcommand{\bx}{\bm{x}} % vector x in bold
+\newcommand{\bb}{\bm{b}} % vector b in bold
+\newcommand{\bu}{\bm{u}} % vector u in bold
+\newcommand{\bv}{\bm{v}} % vector v in bold
+\newcommand{\bpi}{\bm{\pi}} % vector \pi in bold
+\newcommand{\balpha}{\bm{\alpha}} % vector \alpha in bold
+\newcommand{\blambda}{\bm{\lambda}} % vector \lambda in bold
+\newcommand{\dalpha}{\dot{\balpha}} % time derviative \alpha
+\newcommand{\dx}{\dot{\bx}} % time derviative x
+\newcommand{\dxi}{\dot x_i} % time derviative x ith component
+\newcommand{\cL}{\bar{\mathcal{L}}} % curvy L
+\newcommand{\cW}{\mathcal{W}} % curvy W
+\newcommand{\cI}{\mathcal{I}} % curvy I
+\newcommand{\R}{\mathbb{R}} % real number
+\DeclareMathOperator{\diag}{diag}
+
 
 %% declaring abs so that it works nicely
 \DeclarePairedDelimiter\abs{\lvert}{\rvert}%
@@ -143,6 +164,107 @@ We propose to apply an optimization based predictive control law to our robots :
     \addConstraint{}{\dot{f}(\vec{x},\vec{u})}{}{}
 \end{mini}
 
+
+\section{Theoretical analysis}
+In this section, we will use a \emph{normalized} Laplacian matrix $\cL \in \R^{n \times n}$ (also called the random walk normalized Laplacian). Suppose we are given the standard Laplacian matrix $\mathcal{L}$ whose diagonal elements are represented by $D = \diag(\mathcal{L}) \in\R^{n \times n}$. Then, the normalized Laplacian matrix is defined as
+\[
+  \cL =  D^{-1} \mathcal{L} \,.
+\]
+If the original Laplacian $\cL$ was unweighted, then the normalized Laplacian has the following form
+\[
+    \cL(i,j) = \begin{cases}
+        1 \text{ if } i=j\,,\\
+        -\nicefrac{1}{d_i} \text{ for } i \neq j\,. 
+    \end{cases}
+\]
+Here, $d_i$ is the degree (number of neighbors) of the $i$th node. We summarize below some well known properties of the $\cL$ operator.
+
+\begin{claim}[\cite{horaud2009short, wilmer2009markov}]
+    The normalized Laplacian matrix satisifes
+    \begin{enumerate}
+        \item It is row stochastic satisfying $\sum_{j=1}^n \cL(i,j) = 1 \text{ for all } i \in [n]$.
+        \item It has all real eigenvalues with the smallest being 0, of the form $(\lambda_1=0, \lambda_2, \dots, \lambda_n)$.
+        \item The right eigenvector corresponding to eigenvalue 0 is the all 1s vector $\tfrac{1}{\sqrt{n}}\1$.
+        \item All the eigenvalues lie in range $\lambda_1 \in [0,1]$ and $\lambda_2 > 0$ iff the graph is connected.
+    \end{enumerate}
+\end{claim}
+
+
+\subsection{Laplacian based proportional response}
+Let us consider the simple proportional response algorithm with bias which performs the update
+\begin{align}\label{eqn:p-update}
+ \dx = -\cL \bx + \bb\,.
+\end{align}
+Here, $\bb$ encodes some bias about the final formation we want our system to converge to.
+
+\begin{claim}
+    Let $\bpi$ be the left eigenvector of the matrix $\cL$ corresponding to eigenvalue 0, and let $\bpi^\top \bb = 0$. Then, assuming that $\lambda_2 > 0$ (i.e. the graph is connected) the update \eqref{eqn:p-update} coverges to the solution
+    \[
+        \bx(\infty) =   \alpha\1 + \cL^{\dagger} \bb \text { where } \alpha = \frac{\bpi^\top \bx(0)}{\bpi^\top \1}\,.
+    \]
+    Further, the formation converges to this limit at an exponential rate
+    \[
+        \norm{\bx(t) - \bx(\infty)}_2 \leq \exp( - \lambda_2 t)\norm{\bx(0) - \bx(\infty)}_2\,.
+    \]
+\end{claim}
+\begin{proof}
+    First note that all the eigenvalues of $-\cL$ lie in $[-1,0]$, and so the trajectory of $\bx(t)$ is stable. Now, since all the eigenvalues of $\cL$ are real, we can perform an SVD decomposition as follows
+    \[
+        \cL = U \Lambda V^\top  = 0 (\1 \bpi^\top) + \sum_{i=2}^n \lambda_i \bu_i \bv_i^\top \,,
+    \]
+    where $\Lambda$ is a diagonal matrix consisting of eigenvalues, and $U$ and $V$ are orthonormal matrices. 
+    Notice that since $\bpi^\top \cL = 0$, the $\bpi$ weighted average of $\bx(t)$ remains constant over time:
+    \[
+      \frac{d \bpi^\top \bx}{dt} = \bpi^\top\dx = -(\bpi^\top\cL)\bx + \bpi^\top \bb = 0\,.
+    \]
+    This means that
+    \begin{equation}\label{eqn:conserved}
+        \bpi^\top\bx(t)  = \bpi^\top \bx(0)\,.  
+    \end{equation}
+    Next, observe that the only fixed point of the update equation \eqref{eqn:p-update} is of the form
+    \[
+        \cL\bx(\infty) = \bb \Rightarrow \bx(\infty) = \cL^{\dagger}\bb + \alpha \1\,,
+    \]
+    where $\cL^\dagger$ represents the pseudo-inverse and $\alpha$ is some constant.
+    Using the previous constraint on the weighted sum of $\bx(t)$, we can compute the value of $\alpha$ as
+    \[
+            \bpi^\top \cL^{\dagger}\bb + \alpha \bpi^\top\1  = \alpha \bpi^\top\1 \Rightarrow \alpha = \frac{\bpi^\top \bx(0)}{\bpi^\top \1}\,.
+    \]
+    This proves the first part of the claim. We can now solve the matrix differential equation above to write 
+    \[
+      \bx(t) - \bx(\infty) =   \exp(- \cL t) (\bx(0) - \bx(\infty)) = (\exp(- \cL t) - \1 \pi^\top) (\bx(0) - \bx(\infty))\,.
+    \]
+    The last equality follows from our observation \eqref{eqn:conserved}. Now, taking euclidean norms and both sides gives
+    \[
+        \norm{\bx(t) - \bx(\infty) }_2 \leq  \norm{\exp(- \cL t) - \1 \pi^\top}_{2}\norm{\bx(0) - \bx(\infty)}_2 = \exp(-\lambda_2 t)\norm{\bx(0) - \bx(\infty)}_2\,.
+    \]
+    This finishes our proof.
+    % since $\bpi^\top \bb = 0$, we have the following for $\cL^{\dagger}$ which is the pseudo-inverse of $\cL$:
+    % \[
+    %     \cL \cL^{\dagger} \bpi = \bpi\,.
+    % \]  
+    % Thus the update equation can be simplified as 
+    % \[
+    %   \dx = -\cL( \bx - \cL^{\dagger}\bb )\,.  
+    % \]
+
+    % Next, let us rewrite $(\bx(t) - \cL^{\dagger}\bb)$ as $\balpha(t)$ in the coordinate system of $V$:
+    % \[
+    %   \bx(t) = \frac{\alpha_1(t)}{\sqrt{n}}\1 + \sum_{i=2}^n \alpha_i(t) \bv_i  + \cL^{\dagger}\bb \,.
+    % \]
+    % Then, we can simplify as
+    % \[
+    %     \dx = -\cL (\bx(t) - \cL^{\dagger}\bb) =  -(\sum_{i=2}^n \lambda_i \bu_i \bv_i^\top)(\frac{\alpha_1(t)}{\sqrt{n}}\1 + \sum_{i=2}^n \alpha_i(t) \bv_i) = -\sum_{i=2}^n \lambda_i \alpha_i(t) \bu_i\,,
+    % \]
+    % Recall that $\bx(t) = V \balpha(t) + \cL^{\dagger}\bb$ and so we can rewrite the above equation as
+    % \[
+    %     \dx = - U \Lambda \balpha(t) \Rightarrow \dx = - U \Lambda V^\top (\bx(t) - \cL^{\dagger}\bb)\,.
+    % \]
+    % Solving this matrix differential equation yields 
+    % \[
+    %   \bx(t) =   
+    % \]
+\end{proof}
 
 \printbibliography
 
