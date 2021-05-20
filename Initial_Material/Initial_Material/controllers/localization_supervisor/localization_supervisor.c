@@ -25,11 +25,12 @@
 // 1 to save the logs in a file
 #define LOGS 1
 //name of the saved logs
-#define FILENAME "datatrue"
+#define FILENAME "datatrue.csv"
 WbNodeRef rob;		// Robot nodes
 WbFieldRef rob_trans;  	// Robots translation fields
 WbFieldRef rob_rotation;	// Robots rotation fields
 float loc[3];		// Location of everybody in the flock
+float orig_loc[3];		// Location of the robot at time t=0
 static FILE *fp;
 
 void reset(void);
@@ -81,21 +82,18 @@ int main(int argc, char **argv) {
   if (LOGS ==1 ) {
     supervisor_init_log(FILENAME);
   }
-  /*
-   * You should declare here WbDeviceTag variables for storing
-   * robot devices like this:
-   *  WbDeviceTag my_sensor = wb_robot_get_device("my_sensor");
-   *  WbDeviceTag my_actuator = wb_robot_get_device("my_actuator");
-   */
 
+	orig_loc[0] = wb_supervisor_field_get_sf_vec3f(rob_trans)[0]; // X
+    orig_loc[1] = wb_supervisor_field_get_sf_vec3f(rob_trans)[2]; // Z
+    orig_loc[2] = wb_supervisor_field_get_sf_rotation(rob_rotation)[3]; // THETA
   /* main loop
    * Perform simulation steps of TIME_STEP milliseconds
    * and leave the loop when the simulation is over
    */
   while (wb_robot_step(TIME_STEP) != -1) {
-    loc[0] = wb_supervisor_field_get_sf_vec3f(rob_trans)[0]; // X
-    loc[1] = wb_supervisor_field_get_sf_vec3f(rob_trans)[2]; // Z
-    loc[2] = wb_supervisor_field_get_sf_rotation(rob_rotation)[3]; // THETA
+    loc[0] = wb_supervisor_field_get_sf_vec3f(rob_trans)[0]-orig_loc[0]; // X
+    loc[1] = wb_supervisor_field_get_sf_vec3f(rob_trans)[2]-orig_loc[1]; // Z
+    loc[2] = fmod((wb_supervisor_field_get_sf_rotation(rob_rotation)[3]-orig_loc[2])+M_PI,2*M_PI)-M_PI; // THETA
     
     if(VERBOSE ==1){
       printf("pose of robot 0:   x:   %f   z:   %f   th:   %f \n ", loc[0], loc[1],loc[2]);

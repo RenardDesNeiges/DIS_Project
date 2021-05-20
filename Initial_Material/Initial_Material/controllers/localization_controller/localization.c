@@ -25,22 +25,26 @@
 #define VERBOSE_ACC_MEAN false  // Print accelerometer mean values
 #define VERBOSE_POSE_GPS false      // Print pose values
 #define VERBOSE_ENC false       // Print encoder values
-
+#define VERBOSE_KALMAN false
 /*DEFINITIONS*/
 
 
 /*VARIABLES*/
 static sensors_t   		_sensors;
 static measurement_t 	_meas;
+static control_t 		_control;
 static pose_t        	_pose_gps, _pose_acc, _pose_enc, _pose_kalman;
 static pose_t        	_pose_origin = {-0.0, 0.0, 0.0};
-double last_gps_time_s = -1.1f;
+static double 			last_gps_time_s = -1.1f;
+static int 				_time_step;
 static FILE *fp;
 
 /* FUNCTIONS */
 static bool loc_init_encoder(int time_step);
 static bool loc_init_acc(int time_step);
 static bool loc_init_gps();
+static bool loc_init_kalman(int ts);
+
 static bool loc_init_log(const char* filename);
 
 static void loc_compute_mean_acc(int time_init, int time_step);
@@ -51,6 +55,10 @@ static void loc_get_gps();
 
 static void loc_get_gps_pose();
 static double loc_get_heading();
+void loc_recompute_B(double B[N_STATES][N_CONTROL_INPUT],double theta);
+static void loc_format_u(double u[N_CONTROL_INPUT]);
+static void loc_format_y(double y_meas[N_OBSERVABLES], int freq);
+static void loc_format_kalman_pose();
 
 static bool loc_error(bool test,const char * message, int line, const char * fileName);
 //-----------------------------------------------------------------------------------//
@@ -64,9 +72,9 @@ static bool loc_error(bool test,const char * message, int line, const char * fil
 bool loc_init(int time_step, pose_t pose_origine) 
 {
 	_pose_origin = pose_origine;
-	
+	_time_step = time_step;
 	bool err = false;
-
+	
 	memset(&_sensors, 0 , sizeof(sensors_t));
 
 	memset(&_meas, 0 , sizeof(measurement_t));
@@ -78,13 +86,14 @@ bool loc_init(int time_step, pose_t pose_origine)
 	memset(&_pose_acc, 0 , sizeof(pose_t));
 	
 	memset(&_pose_kalman, 0 , sizeof(pose_t));
-	switch (MODE)
+	switch (MODE_LOC)
 	{
 		case ODOM:
 			CATCH(err,loc_init_encoder(time_step));
 			odo_reset(time_step);
 			break;
 		case ODOM_ACC:
+			CATCH(err,loc_init_encoder(time_step));
 			CATCH(err,loc_init_acc(time_step));
 			odo_reset(time_step);
 			break;
@@ -95,6 +104,7 @@ bool loc_init(int time_step, pose_t pose_origine)
 			CATCH(err,loc_init_encoder(time_step));
 			CATCH(err,loc_init_acc(time_step));
 			CATCH(err,loc_init_gps());
+			CATCH(err,loc_init_kalman(time_step));
 			odo_reset(time_step);
 			break;
 		default:
@@ -179,6 +189,140 @@ bool loc_init_encoder(int time_step)
 
   return err;
 }
+
+bool loc_init_kalman(int ts)
+{
+	double state_0[N_STATES];
+	double cov_0[N_STATES][N_STATES];
+	double A[N_STATES][N_STATES];
+	double B[N_STATES][N_CONTROL_INPUT];
+	double C[N_FREQ][N_OBSERVABLES][N_STATES];
+	double D[N_FREQ][N_OBSERVABLES][N_CONTROL_INPUT];
+	double Q[N_STATES][N_STATES];
+	double R[N_FREQ][N_OBSERVABLES][N_OBSERVABLES];
+	
+	double ts_mil = ts/1000.;
+	
+	
+	if(MODE_KAL == ACC_CONTROLLED)
+	{
+		for(int i = 0; i<N_STATES;i++)
+		{
+			
+			state_0[i] = 0;
+			for(int j = 0;j<N_STATES;j++)
+			{
+				if(i==j)
+					cov_0[i][j] = 0.0001;
+				else
+					cov_0[i][j] = 0;
+			}
+		}
+		//Init A
+		memset(A,0,sizeof(A));
+		A[0][0] = 1;
+		A[0][2] = ts_mil;
+		A[1][1] = 1;
+		A[1][3] = ts_mil;
+		A[2][2] = 1;
+		A[3][3] = 1;
+		//Init B
+		B[0][0] = ts_mil*ts_mil/2;
+		B[0][1] = 0;
+		B[1][0] = 0;
+		B[1][1] = ts_mil*ts_mil/2;
+		B[2][0] = ts_mil;
+		B[2][1] = 0;
+		B[3][0] = 0;
+		B[3][1] = ts_mil;
+		
+		//Init C
+		memset(C,0,sizeof(C));
+		C[F_ODOM][0][2] = 1;
+		C[F_ODOM][1][3] = 1;
+		C[F_GPS][0][0] = 1;
+		C[F_GPS][1][1] = 1;
+		   
+
+		//Init D
+		memset(D,0,sizeof(D));
+		
+
+		//Init Q 
+		memset(Q,0,sizeof(Q));
+		Q[0][0] = 0.1*ts_mil/1000.;
+		Q[1][1] = 0.1*ts_mil/1000.;
+		Q[2][2] = 0.1*ts_mil/1000.;
+		Q[3][3] = 0.1*ts_mil/1000.;
+
+		//Init R
+		memset(R,0,sizeof(R));
+		R[F_ODOM][0][0] = 0.05*ts_mil/1000.;
+		R[F_ODOM][1][1] = 0.05*ts_mil/1000.;
+		R[F_GPS][0][0] = 0.0001*ts_mil/1000.;
+		R[F_GPS][1][1] = 0.0001*ts_mil/1000.;
+				   
+		kal_init_kalman(state_0,cov_0,A,B,Q,C,D,R);
+	}
+	//~ if(MODE_KAL == ACC_CONTROLLED_UPG)
+	//~ {
+		//~ double state_0[N_STATES] = {0,0,0,0,0,0};
+		//~ double cov_0[N_STATES][N_STATES] = {{0.001,0,0,0,0,0},
+											//~ {0,0.001,0,0,0,0},
+											//~ {0,0,0.001,0,0,0},
+											//~ {0,0,0,0.001,0,0},
+											//~ {0,0,0,0,0.001,0},
+											//~ {0,0,0,0,0,0.001}};
+											
+											
+		//~ double A[N_STATES][N_STATES]={{1,0,0,ts_mil,0,0},
+									  //~ {0,1,0,0,ts_mil,0},
+									  //~ {0,0,1,0,0,ts_mil},
+									  //~ {0,0,0,1,0,0},
+									  //~ {0,0,0,0,1,0},
+									  //~ {0,0,0,0,0,1}};
+
+		//~ double B[N_STATES][N_CONTROL_INPUT]={{ts_mil*ts_mil/2,0},
+											 //~ {0,ts_mil*ts_mil/2},
+											 //~ {0,0},
+											 //~ {ts_mil,0},
+											 //~ {0,ts_mil},
+											 //~ {0,0}};
+		   
+		//~ double C[N_FREQ][N_OBSERVABLES][N_STATES]={{{0,0,0,1,0,0},
+													//~ {0,0,0,0,1,0},
+													//~ {0,0,0,0,0,1}},//C[F_ODOM]
+												   //~ {{1,0,0,0,0,0},
+													//~ {0,1,0,0,0,0},
+													//~ {0,0,1,0,0,0}}};//C[F_GPS] (the heading is discarded as it is no really measured)
+				   
+		//~ double D[N_FREQ][N_OBSERVABLES][N_CONTROL_INPUT]={{{0,0},
+														   //~ {0,0},
+														   //~ {0,0}},
+												          //~ {{0,0},
+														   //~ {0,0},
+														   //~ {0,0}}};
+				   
+		//~ double Q[N_STATES][N_STATES]={{0.05*ts_mil/1000.,0,0,0,0,0},
+									  //~ {0,0.05*ts_mil/1000.,0,0,0,0},
+									  //~ {0,0,0.05*ts_mil/1000.,0,0,0},
+									  //~ {0,0,0,0.01*ts_mil/1000.,0,0},
+									  //~ {0,0,0,0,0.01*ts_mil/1000.,0},
+									  //~ {0,0,0,0,0,0.01*ts_mil/1000.}};
+		 
+		//~ double R[N_FREQ][N_OBSERVABLES][N_OBSERVABLES]={{{0.005*ts_mil/1000.,0,0},
+														 //~ {0,0.005*ts_mil/1000.,0},
+														 //~ {0,0,0.005*ts_mil/1000.}},
+														//~ {{0.0001*ts_mil/1000.,0,0},
+														 //~ {0,0.0001*ts_mil/1000.,0},
+														 //~ {0,0,1}}};
+		
+				   
+		//~ kal_init_kalman(state_0,cov_0,A,B,Q,C,D,R);   
+	//~ }
+	
+	return false;
+}
 /**
  * @brief      Initialize the logging of the file
  *
@@ -195,7 +339,7 @@ bool loc_init_log(const char* filename)
 
   if( !err )
   {
-    fprintf(fp, "time; pose_x; pose_y; pose_heading;  gps_x; gps_y; gps_z; acc_0; acc_1; acc_2; right_enc; left_enc; odo_acc_x; odo_acc_y; odo_acc_heading; odo_enc_x; odo_enc_y; odo_enc_heading; kalman_x; kalman_y; kalman_heading\n");
+    fprintf(fp, "time; pose_x; pose_y; pose_heading;  gps_x; gps_y; gps_z; acc_0; acc_1; acc_2; right_enc; left_enc; odo_acc_x; odo_acc_y; odo_acc_heading; odo_enc_x; odo_enc_y; odo_enc_heading; kalman_x; kalman_y; kalman_heading; mode_x; mode_y; mode_heading \n");
   }
 
   return err;
@@ -203,12 +347,12 @@ bool loc_init_log(const char* filename)
 
 //calibration functions
 /** 
- * @brief	Achieve the calibration: if the mode is either ODOM_ACC or KALMAN,
+ * @brief	Achieve the calibration: if the MODE_LOC is either ODOM_ACC or KALMAN,
  * 			compute the mean acceleration to remove the bias
  */
 void loc_calibrate(int time_init, int time_step)
 {
-	switch(MODE)
+	switch(MODE_LOC)
 	{
 		case ODOM_ACC:
 		case KALMAN:
@@ -230,7 +374,7 @@ static void loc_compute_mean_acc(int time_init,int time_step)
 	if( count > 20 ) // Remove the effects of strong acceleration at the begining
 	{
 		for(int i = 0; i < 3; i++)  
-			_meas.acc_mean[i] = (_meas.acc_mean[i] * (count - 1) + _meas.acc[i]) / (double) count;
+			_meas.acc_mean[i] = (_meas.acc_mean[i] * (count - 21) + _meas.acc[i]) / ((double) count-20);
 	}
 
 	if( count == (int) (time_init / (double) time_step * 1000) )
@@ -242,16 +386,17 @@ static void loc_compute_mean_acc(int time_init,int time_step)
 
 //Measure functions
 /**
- * @brief	get the measurments required in MODE from webots
+ * @brief	get the measurments required in MODE_LOC from webots
  */
 void loc_update_measures()
 {
-	switch (MODE)
+	switch (MODE_LOC)
 	{
 		case ODOM:
 			loc_get_encoder();
 			break;
 		case ODOM_ACC:
+			loc_get_encoder();
 			loc_get_acc();
 			break;
 		case GPS:
@@ -263,7 +408,7 @@ void loc_update_measures()
 			loc_get_gps();
 			break;
 		default:
-			printf("unknown mode\n");
+			printf("unknown MODE_LOC\n");
 			break;
 	}
 }
@@ -290,11 +435,16 @@ void loc_get_encoder()
  */
 void loc_get_acc()
 {
-  const double * acc_values = wb_accelerometer_get_values(_sensors.acc);
-  memcpy(_meas.acc, acc_values, sizeof(_meas.acc));
-
-  if(VERBOSE_ACC)
-    printf("ROBOT acc : %g %g %g\n", _meas.acc[0], _meas.acc[1] , _meas.acc[2]);
+	const double * acc_values = wb_accelerometer_get_values(_sensors.acc);
+  
+	memcpy(_meas.acc, acc_values, sizeof(_meas.acc));
+	//~ //needed otherwise the factor stays 
+	//~ for(int i = 0;i<3;i++)
+		//~ _meas.acc[i] /= 3.6;
+	if(VERBOSE_ACC)
+	{
+		printf("ROBOT acc : %g %g %g\n", _meas.acc[0], _meas.acc[1] , _meas.acc[2]);
+	}
 }
 /**
  * @brief   	Get the gps measurments for position of the robot if the 
@@ -320,25 +470,64 @@ void loc_get_gps()
 
 // Compute the poses
 /** 
- * @brief		Compute the pose required in the selected MODE
+ * @brief		Compute the pose required in the selected MODE_LOC
  */
 void loc_compute_pose()
 {
-	switch(MODE)
+	double u[N_CONTROL_INPUT];
+	double y_meas[N_OBSERVABLES];
+	double B[N_STATES][N_CONTROL_INPUT];
+	switch(MODE_LOC)
 	{
 		case ODOM:
 			odo_compute_encoders(&_pose_enc, _meas.left_enc - _meas.prev_left_enc, _meas.right_enc - _meas.prev_right_enc);
 			break;
+			
 		case ODOM_ACC:
+			//needed to find the heading of the robot
+			odo_compute_encoders(&_pose_enc, _meas.left_enc - _meas.prev_left_enc, _meas.right_enc - _meas.prev_right_enc);
+			
 			odo_compute_acc(&_pose_acc, _meas.acc, _meas.acc_mean);
+			
 			break;
 		case GPS:
 			loc_get_gps_pose();
 			break;
 		case KALMAN:
-			odo_compute_acc(&_pose_acc, _meas.acc, _meas.acc_mean);
 			loc_get_gps_pose();
 			odo_compute_encoders(&_pose_enc, _meas.left_enc - _meas.prev_left_enc, _meas.right_enc - _meas.prev_right_enc);
+			loc_format_y(y_meas,F_ODOM);
+			kal_update_freq(F_ODOM,y_meas);
+			
+			
+
+			
+			
+			if(fabs(last_gps_time_s-wb_robot_get_time())<TOL)
+			{
+				//printf("UPDATE\n");
+				loc_format_y(y_meas,F_GPS);
+				kal_update_freq(F_GPS,y_meas);
+			}
+			
+			//the retrurned pose will be the last one measured
+			loc_format_kalman_pose();
+			
+			if(MODE_KAL == ACC_CONTROLLED_UPG)
+			{
+				//relinearize the system around the present pose
+				//loc_recompute_B(B,_pose_kalman.heading);
+				//kal_change_B(B);
+			}
+			if(MODE_KAL == ACC_CONTROLLED)
+			{
+				//predict the future pose
+				odo_compute_acc(&_pose_acc, _meas.acc, _meas.acc_mean);
+				loc_format_u(u);
+				kal_predict(u);
+			}
+			
+			
 			break;
 		default: 
 			break;
@@ -357,7 +546,7 @@ void loc_get_gps_pose()
     _pose_gps.heading = loc_get_heading() + _pose_origin.heading;
   
     if(VERBOSE_POSE_GPS)
-      printf("ROBOT pose : %g %g %g\n", _pose_gps.x , _pose_gps.y , RAD2DEG(_pose_gps.heading));
+      printf("ROBOT pose GPS : %g %g %g\n", _pose_gps.x , _pose_gps.y , RAD2DEG(_pose_gps.heading));
 }
 /**
  * @brief      Compute the heading (orientation) of the robot based on the gps position values.
@@ -375,10 +564,120 @@ double loc_get_heading()
   return heading;
 }
 
+//Kalman formating
+
+/**
+ * @brief 	compute B, the control matrix, given a pose
+ * 
+ */
+void loc_recompute_B(double B[N_STATES][N_CONTROL_INPUT],double theta)
+{
+	double ts = _time_step/1000.;
+	if(MODE_KAL == ACC_CONTROLLED_UPG)
+	{
+		
+		B[0][0] =  cos(theta)*ts*ts/2;
+		B[0][1] = -sin(theta)*ts*ts/2;
+		B[1][0] =  sin(theta)*ts*ts/2;
+		B[1][1] =  cos(theta)*ts*ts/2;
+		B[2][0] =  0;
+		B[2][1] =  0;
+		
+	}
+}
+void loc_format_u(double u[N_CONTROL_INPUT]){
+	//compute the part caused by the control
+	if(MODE_KAL == ACC_CONTROLLED)
+	{
+		//printf("heading: %f \n",_pose_acc.heading);
+		u[0]  =  cos(_pose_kalman.heading)*(_meas.acc[1]-_meas.acc_mean[1])
+				+sin(_pose_kalman.heading)*(_meas.acc[0]-_meas.acc_mean[0]);
+		u[1] = 	-sin(_pose_kalman.heading)*(_meas.acc[1]-_meas.acc_mean[1])
+				-cos(_pose_kalman.heading)*(_meas.acc[0]-_meas.acc_mean[0]);
+	}
+	else if(MODE_KAL == VEL_CONTROLLED)
+	{
+		//~ pose_t global_speed;
+		//~ u[0] = cos(_pose_kalman.heading)_control.vel_control[0];
+		//~ u[1] = _control.vel_control[1];
+	}
+	
+}
+
+void loc_format_y(double y_meas[N_OBSERVABLES], int freq)
+{
+	if(MODE_KAL == ACC_CONTROLLED)
+	{
+		if(freq == F_GPS)
+		{
+			y_meas[0] = _pose_gps.x;
+			y_meas[1] = _pose_gps.y;		
+			//all other possible observables are set to 0 (note that they would have a K[i] 
+			//equal to 0 anyways)
+			for(int i = 2;i<N_OBSERVABLES;i++)
+				y_meas[i] = 0;
+		}
+		if(freq == F_ODOM)
+		{
+			pose_t speed;
+			
+			odo_compute_speed(&speed,_pose_kalman,_meas.left_enc - _meas.prev_left_enc, _meas.right_enc - _meas.prev_right_enc);
+			
+			y_meas[0] = speed.x;
+			y_meas[1] = speed.y;
+		}
+	}
+	if(MODE_KAL == ACC_CONTROLLED_UPG)
+	{
+		if(freq == F_GPS)
+		{
+			y_meas[0] = _pose_gps.x;
+			y_meas[1] = _pose_gps.y;
+			y_meas[2] = _pose_gps.heading;			
+			//all other possible observables are set to 0 (note that they would have a K[i] 
+			//equal to 0 anyways)
+			for(int i = 3;i<N_OBSERVABLES;i++)
+				y_meas[i] = 0;
+		}
+		if(freq == F_ODOM)
+		{
+			pose_t speed;
+			
+			odo_compute_speed(&speed,_pose_kalman,_meas.left_enc - _meas.prev_left_enc, _meas.right_enc - _meas.prev_right_enc);
+			
+			y_meas[0] = speed.x;
+			y_meas[1] = speed.y;
+			y_meas[2] = speed.heading;
+		}
+	}
+
+}
+void loc_format_kalman_pose()
+{
+	if(MODE_KAL	== ACC_CONTROLLED)
+	{
+		double x[N_STATES];
+		kal_get_pose(x);
+		_pose_kalman.x = x[0];
+		_pose_kalman.y = x[1];
+		_pose_kalman.heading=_pose_acc.heading;
+	}
+	if(MODE_KAL == ACC_CONTROLLED_UPG)
+	{
+		double x[N_STATES];
+		kal_get_pose(x);
+		_pose_kalman.x = x[0];
+		_pose_kalman.y = x[1];
+		_pose_kalman.heading=x[2];
+	}
+	if(VERBOSE_KALMAN)
+		printf("ROBOT pose : %g %g %g\n", _pose_kalman.x , _pose_kalman.y , RAD2DEG(_pose_kalman.heading));
+}
+
 // Output functions
 pose_t loc_get_pose()
 {
-	switch(MODE)
+	switch(MODE_LOC)
 	{
 		case ODOM:
 			return _pose_enc;
@@ -387,10 +686,9 @@ pose_t loc_get_pose()
 		case GPS:
 			return _pose_gps;
 		case KALMAN:
-			return _pose_kalman;
 		default:
-			//should never be reached, but if so let's just say it's a kalman
 			return _pose_kalman;
+		
 	}
 }
 //LOG function
@@ -399,11 +697,12 @@ void loc_print_log(double time)
 	if(LOGS){
 		if( fp != NULL)
 		{
-			fprintf(fp, "%g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g;  %g; %g; %g;\n",
+			pose_t pose_mode = loc_get_pose();
+			fprintf(fp, "%g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g; %g;  %g; %g; %g; %g; %g; %g\n",
 					time, _pose_gps.x, _pose_gps.y , _pose_gps.heading, _meas.gps[0], _meas.gps[1], 
 					_meas.gps[2], _meas.acc[0], _meas.acc[1], _meas.acc[2], _meas.right_enc, _meas.left_enc, 
 					_pose_acc.x, _pose_acc.y, _pose_acc.heading, _pose_enc.x, _pose_enc.y, _pose_enc.heading, 
-					_pose_kalman.x, _pose_kalman.y, _pose_kalman.heading);
+					_pose_kalman.x, _pose_kalman.y, _pose_kalman.heading, pose_mode.x, pose_mode.y, pose_mode.heading);
 		}
 	}
 
@@ -428,7 +727,7 @@ bool loc_error(bool test, const char * message, int line, const char * fileName)
 
     sprintf(buffer, "file : %s, line : %d,  error : %s", fileName, line, message);
 
-    fprintf(stderr,buffer);
+    fprintf(stderr,"%s",buffer);
 
     return(true);
   }

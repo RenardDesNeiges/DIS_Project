@@ -211,3 +211,37 @@ void trajectory_1_delay(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor,
      wb_motor_set_velocity(dev_right_motor, 0.0);
    }
 }
+void circle_delay(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor, int init_time) {
+   double t = wb_robot_get_time();
+   t -= init_time;
+   if (t > 0.0) {
+     wb_motor_set_velocity(dev_left_motor, 6.28);
+     wb_motor_set_velocity(dev_right_motor, 3.14);
+   }
+   
+}
+void lin_delay(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor, int init_time) {
+   double t = wb_robot_get_time();
+   t -= init_time;
+   if (t > 0.0 && t<9) {
+     wb_motor_set_velocity(dev_left_motor, t/2);
+     wb_motor_set_velocity(dev_right_motor, t/2);
+   }
+   if (t > 9 && t<18) {
+     wb_motor_set_velocity(dev_left_motor, 9-t/2);
+     wb_motor_set_velocity(dev_right_motor, 9-t/2);
+   }
+   if (t > 18 && t<23) {
+     wb_motor_set_velocity(dev_left_motor, M_PI/10);
+     wb_motor_set_velocity(dev_right_motor, -M_PI/10);
+   }
+   if (t > 23 && t<32) {
+     wb_motor_set_velocity(dev_left_motor, -23/2+t/2);
+     wb_motor_set_velocity(dev_right_motor, -23/2+t/2);
+   }
+   if (t > 32 && t<41) {
+     wb_motor_set_velocity(dev_left_motor, 32-23/2-t/2);
+     wb_motor_set_velocity(dev_right_motor, 32-23/2-t/2);
+   }
+   
+}

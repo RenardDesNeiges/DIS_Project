@@ -8,7 +8,6 @@
 #include <webots/position_sensor.h>
 #include "trajectories.h"
 #include "odometry.h"
-#include "kalman.h"
 #include "localization.h"
 //-----------------------------------------------------------------------------------//
 /*MACRO*/
@@ -80,6 +79,7 @@ int main()
 			//trajectory_1(_robot.left_motor, _robot.right_motor);
 			//    trajectory_2(dev_left_motor, dev_right_motor);
 			trajectory_1_delay(_robot.left_motor, _robot.right_motor,TIME_INIT);
+			//lin_delay(_robot.left_motor, _robot.right_motor,TIME_INIT) ;
 			// Logging Step
 			controller_print_log(wb_robot_get_time());
 
@@ -179,7 +179,7 @@ bool controller_error(bool test, const char * message, int line, const char * fi
 
     sprintf(buffer, "file : %s, line : %d,  error : %s", fileName, line, message);
 
-    fprintf(stderr,buffer);
+    fprintf(stderr,"%s",buffer);
 
     return(true);
   }

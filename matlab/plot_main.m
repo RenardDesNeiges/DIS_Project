@@ -145,3 +145,41 @@ legend('Ground Thruth : GPS', 'Odometry : Wheel encoders');
 xlabel('Time [s]'); ylabel('heading [Rad]');
 y_lim = [min([wrapToPi(data.odo_enc_heading);  data.pose_heading]),max([wrapToPi(data.odo_enc_heading);  data.pose_heading])];
 xlim([data.time(1), data.time(end)]);ylim(y_lim + [-0.05,0.05]*(y_lim(2)-y_lim(1)));
+%% Part F : Plot kalman computed on Webots
+clc; clear all; close all;
+name = "localization.csv";
+name_true = "datatrue.csv";
+[N_SIM, T_SIM, T, data] = read_log(name);
+[N_SIMsup, T_SIMsup, T, datasup] = read_log(name_true);
+
+if (N_SIM ~= N_SIMsup ||  T_SIMsup ~= T_SIMsup)
+    disp("not from the same simulation")
+end
+
+
+
+
+% Plot the odometry computed using the accelerometer
+f = figure('Name','Webots : kalman [Rad]'); 
+subplot(3,1,[1 2]);hold on;
+
+% Plot x -y plan : odometry vs ground truth (gps)
+plot(data.pose_x(2:end) , data.pose_y(2:end)); hold on;
+plot(data.kalman_x , data.kalman_y);
+title('x -y plan : odometry vs ground truth (gps)');
+legend('Ground Thruth : GPS', 'Odometry : Wheel encoders');
+xlabel('x [m]'); ylabel('y [m]');
+x_lim = [min([data.odo_enc_x;  data.pose_x]),max([data.odo_enc_x;  data.pose_x])];
+y_lim = [min([data.odo_enc_y;  data.pose_y]),max([data.odo_enc_y;  data.pose_y])];
+xlim(x_lim + [-0.05,0.05]*(x_lim(2)-x_lim(1)));ylim(y_lim + [-0.05,0.05]*(y_lim(2)-y_lim(1)));
+axis equal;
+
+% Plot heading : odometry vs ground truth (gps)
+subplot(3,1,3);hold on;
+plot(data.time ,  data.pose_heading); hold on;
+plot(data.time , wrapToPi(data.odo_enc_heading));
+title('Heading : odometry vs ground truth (gps)');
+legend('Ground Thruth : GPS', 'Odometry : Wheel encoders');
+xlabel('Time [s]'); ylabel('heading [Rad]');
+y_lim = [min([wrapToPi(data.odo_enc_heading);  data.pose_heading]),max([wrapToPi(data.odo_enc_heading);  data.pose_heading])];
+xlim([data.time(1), data.time(end)]);ylim(y_lim + [-0.05,0.05]*(y_lim(2)-y_lim(1)));
