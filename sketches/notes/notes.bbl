@@ -1,5 +1,5 @@
 % $ biblatex auxiliary file $
-% $ biblatex bbl format version 3.1 $
+% $ biblatex bbl format version 2.9 $
 % Do not modify the above lines!
 %
 % This is an auxiliary file used by the 'biblatex' package.
@@ -16,5 +16,59 @@
   {}
 \endgroup
 
-\datalist[entry]{nty/global//global/global}\enddatalist
+\datalist[entry]{nty/global//global/global}
+  \entry{horaud2009short}{article}{}
+    \name{author}{1}{}{%
+      {{hash=HR}{%
+         family={Horaud},
+         familyi={H\bibinitperiod},
+         given={Radu},
+         giveni={R\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{HR1}
+    \strng{fullhash}{HR1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{H}
+    \field{sortinithash}{H}
+    \field{title}{A short tutorial on graph Laplacians, Laplacian embedding,
+  and spectral clustering}
+    \field{journaltitle}{URl: http://csustan. csustan. edu/\~{}
+  tom/Lecture-Notes/Clustering/GraphLaplacian-tutorial. pdf}
+    \field{year}{2009}
+  \endentry
+
+  \entry{wilmer2009markov}{article}{}
+    \name{author}{3}{}{%
+      {{hash=WE}{%
+         family={Wilmer},
+         familyi={W\bibinitperiod},
+         given={EL},
+         giveni={E\bibinitperiod},
+      }}%
+      {{hash=LDA}{%
+         family={Levin},
+         familyi={L\bibinitperiod},
+         given={David\bibnamedelima A},
+         giveni={D\bibinitperiod\bibinitdelim A\bibinitperiod},
+      }}%
+      {{hash=PY}{%
+         family={Peres},
+         familyi={P\bibinitperiod},
+         given={Yuval},
+         giveni={Y\bibinitperiod},
+      }}%
+    }
+    \strng{namehash}{WELDAPY1}
+    \strng{fullhash}{WELDAPY1}
+    \field{labelnamesource}{author}
+    \field{labeltitlesource}{title}
+    \field{sortinit}{W}
+    \field{sortinithash}{W}
+    \field{title}{Markov chains and mixing times}
+    \field{journaltitle}{American Mathematical Soc., Providence}
+    \field{year}{2009}
+  \endentry
+\enddatalist
 \endinput
