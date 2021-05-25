@@ -44,9 +44,9 @@ void unicylce_controller(double *omega, double *v, pose_t robot, pose_t goal, do
     double theta = goal.heading;
     double e = pow( pow(goal.x,2) + pow(goal.y,2), 0.5);
     // printf("%f %f,%f \n", e, beta, alpha);
-    if(e < 0.006) //avoids oscillations
+    if(fabs(e) < 0.006) //avoids oscillations
         e = 0;
-    if(alpha < 0.2) //avoids oscillations
+    if(fabs(alpha) < 0.2) //avoids oscillations
         alpha = 0;
     *v = (ka * cos(alpha)) * e;
     if(alpha != 0)
