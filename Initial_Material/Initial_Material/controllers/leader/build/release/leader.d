@@ -6,5 +6,7 @@ build/release/leader.o: leader.c \
   /Applications/Webots.app/include/controller/c/webots/gps.h \
   /Applications/Webots.app/include/controller/c/webots/accelerometer.h \
   /Applications/Webots.app/include/controller/c/webots/position_sensor.h \
+  ../localization_controller/odometry.h \
+  ../localization_controller/localization.h ../controller/controller.h \
   /Applications/Webots.app/include/controller/c/webots/distance_sensor.h \
-  trajectories.h odometry.h kalman.h localization.h
+  ../controller/../localization_controller/odometry.h
