@@ -19,7 +19,7 @@
 #include <webots/emitter.h>
 #include <webots/supervisor.h>
 
-#define ROBOTS 2
+#define ROBOTS 4
 
 static WbNodeRef robs[ROBOTS];
 static WbFieldRef robs_translation[ROBOTS];
@@ -53,16 +53,17 @@ void reset(void) {
 		rob[5]++;
 	}
 	emitter_device = wb_robot_get_device(emitter0);
+
 }
 
 int main(int argc, char *args[]) {
 	float buffer[255];
-	float global_x,global_z,rel_x,rel_z;
+	float global_x,global_z,rel_x,rel_z, rel_range, rel_bearing;
 	double temp_err, err, avg_err;
-	int cnt,i;
+	int cnt,i,j;
 	int print_enabled = 0;
 	int send_interval = 5;
-
+	
 	if (argc > 1) {
 		print_enabled = atoi(args[1]);
 		printf("Print: %d\n", print_enabled);
@@ -76,48 +77,62 @@ int main(int argc, char *args[]) {
 
 
 	reset();
-
 	avg_err = 0.0;
 	for(cnt = 0; ; cnt++) { /* The robot never dies! */
 
 		/* Send relative positions to followers */
 		err = 0.0;
-		for (i=1;i<ROBOTS;i++) {
-			
-			/* Get data */
-			loc[0][0] = wb_supervisor_field_get_sf_vec3f(robs_translation[0])[0];
-			loc[0][1] = wb_supervisor_field_get_sf_vec3f(robs_translation[0])[1];
-			loc[0][2] = wb_supervisor_field_get_sf_vec3f(robs_translation[0])[2];
-			loc[0][3] = wb_supervisor_field_get_sf_rotation(robs_rotation[0])[3];
-			loc[i][0] = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[0];
-			loc[i][1] = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[1];
-			loc[i][2] = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[2];
-			loc[i][3] = wb_supervisor_field_get_sf_rotation(robs_rotation[i])[3];
+		for (i=0;i<ROBOTS;i++) {
+			for (j=0;j<ROBOTS;j++) {
+				/* Get data */
+				loc[j][0] = wb_supervisor_field_get_sf_vec3f(robs_translation[j])[0];
+				loc[j][1] = wb_supervisor_field_get_sf_vec3f(robs_translation[j])[1];
+				loc[j][2] = wb_supervisor_field_get_sf_vec3f(robs_translation[j])[2];
+				loc[j][3] = wb_supervisor_field_get_sf_rotation(robs_rotation[j])[3];
+				loc[i][0] = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[0];
+				loc[i][1] = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[1];
+				loc[i][2] = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[2];
+				loc[i][3] = wb_supervisor_field_get_sf_rotation(robs_rotation[i])[3];
 
-			/* Find global relative coordinates */
-			global_x = loc[i][0] - loc[0][0];
-			global_z = loc[i][2] - loc[0][2];
-			/* Calculate relative coordinates */
-			rel_x = -global_x*cos(loc[i][3]) + global_z*sin(loc[i][3]);
-			rel_z = global_x*sin(loc[i][3]) + global_z*cos(loc[i][3]);
-			buffer[0]= i;
-			buffer[1] = rel_x;
-			buffer[2] = rel_z;
-			buffer[3] = loc[0][3] - loc[i][3];
-			while (buffer[2] > M_PI) buffer[2] -= 2.0*M_PI;
-			while (buffer[2] < -M_PI) buffer[2] += 2.0*M_PI;
-			if (cnt % send_interval == 0){
-				wb_emitter_send(emitter_device,(char *)buffer,4*sizeof(float));        
-				
+				/* Find global relative coordinates */
+				if(i == j)
+				{
+					rel_range = 0;
+					rel_bearing = 0;
+				}
+				else
+				{
+					global_x = loc[i][0] - loc[j][0];
+					global_z = loc[i][2] - loc[j][2];
+					/* Calculate relative coordinates */
+					rel_x = -global_x*cos(loc[i][3]) + global_z*sin(loc[i][3]);
+					rel_z = global_x*sin(loc[i][3]) + global_z*cos(loc[i][3]);
+					rel_range = sqrt(rel_x * rel_x + rel_z * rel_z);
+					rel_bearing = -atan2(rel_x, rel_z);
+				}
+
+
+		        // printf("relative position : %d, %d, %f, %f \n", i, j, rel_range, rel_bearing);
+
+				buffer[0]= i;
+				buffer[1]= j;
+				buffer[2] = rel_range;
+				buffer[3] = rel_bearing;
+				// while (buffer[2] > M_PI) buffer[2] -= 2.0*M_PI;
+				// while (buffer[2] < -M_PI) buffer[2] += 2.0*M_PI;
+				if (cnt % send_interval == 0){
+					wb_emitter_send(emitter_device,(char *)buffer,4*sizeof(float));        
+					
+				}
+
+				/* Check error in position of robot */
+				// rel_x = global_x*cos(loc[0][3]) - global_z*sin(loc[0][3]);
+				// rel_z = -global_x*sin(loc[0][3]) - global_z*cos(loc[0][3]);
+				// temp_err = sqrt(pow(rel_x-good_rp[i][0],2) + pow(rel_z-good_rp[i][1],2));
+				// if (print_enabled)
+				// 	printf("Err %d: %.3f, ",i,temp_err);
+				// err += temp_err/ROBOTS;
 			}
-
-			/* Check error in position of robot */
-			rel_x = global_x*cos(loc[0][3]) - global_z*sin(loc[0][3]);
-			rel_z = -global_x*sin(loc[0][3]) - global_z*cos(loc[0][3]);
-			temp_err = sqrt(pow(rel_x-good_rp[i][0],2) + pow(rel_z-good_rp[i][1],2));
-			if (print_enabled)
-				printf("Err %d: %.3f, ",i,temp_err);
-			err += temp_err/ROBOTS;
 		}
 		if (print_enabled)
 			printf("\n");
