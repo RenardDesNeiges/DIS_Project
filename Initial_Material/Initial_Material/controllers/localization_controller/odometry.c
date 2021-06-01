@@ -200,3 +200,29 @@ void odo_reset(int time_step)
 
 	_T = time_step / 1000.0;
 }
+
+
+
+pose_t pose_scale(double c, pose_t p){
+	pose_t new_pose;
+	new_pose.x = c * p.x;
+	new_pose.y = c * p.y;
+	new_pose.heading = c * p.heading;
+	return new_pose;
+}
+
+pose_t pose_add(pose_t a, pose_t b){
+	pose_t new_pose;
+	new_pose.x = a.x + b.x;
+	new_pose.y = a.y + b.y;
+	new_pose.heading = a.heading + b.heading;
+	return new_pose;
+}
+
+pose_t pose_add_3(pose_t a, pose_t b, pose_t c){
+	pose_t new_pose;
+	new_pose.x = a.x + b.x + c.x;
+	new_pose.y = a.y + b.y + c.y;
+	new_pose.heading = a.heading + b.heading + c.heading;
+	return new_pose;
+}

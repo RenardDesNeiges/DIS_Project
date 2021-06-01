@@ -1,4 +1,3 @@
-#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -7,11 +6,9 @@
 #include <webots/gps.h>
 #include <webots/accelerometer.h>
 #include <webots/position_sensor.h>
-#include <webots/distance_sensor.h>
-#include "trajectories.h"
-#include "odometry.h"
-#include "kalman.h"
-#include "localization.h"
+#include "../localization_controller/odometry.h"
+#include "../localization_controller/localization.h"
+#include "../controller/controller.h"
 //-----------------------------------------------------------------------------------//
 /*MACRO*/
 #define CATCH(X,Y)      X = X || Y
@@ -21,20 +18,10 @@
 #define MAX_SPEED 1000          // Maximum speed 
 #define INC_SPEED 5             // Increment not expressed in webots 
 #define MAX_SPEED_WEB 6.28      // Maximum speed webots
-#define TIME_INIT 0		        // Time in second
-
-/*VERBOSE_FLAGS*/
-#define VERBOSE_GPS false        // Print GPS values
-#define VERBOSE_ACC false       // Print accelerometer values
-#define VERBOSE_ACC_MEAN false  // Print accelerometer mean values
-#define VERBOSE_POSE false      // Print pose values
-#define VERBOSE_ENC true       // Print encoder values
-
-#define NB_SENSORS 8
-#define DETECT_RANGE 200
-#define TIME_STEP 64
-
-WbDeviceTag ps[NB_SENSORS]; // list of distance sensor handles
+// #define TIME_INIT 5		        // Time in second
+#define TIME_INIT 1		        // Time in second
+#define WHEEL_RADIUS 20.5
+double wheel_speed_threshold = 6.275*0.5; //max value minus a small epsilon, lowered so that the followers can follow
 
 
 /*DEFINITIONS*/
@@ -50,127 +37,42 @@ typedef struct
 
 //-----------------------------------------------------------------------------------//
 /*VARIABLES*/
-static simulation_t _robot;
+static simulation_t _robot;	
+pose_t migration_vector;	// control vector of the migratory urge
+pose_t obstacle_avoidance_vector;	// control vector of the migratory urge
+pose_t migration_goal;		// goal of migratory urge
+pose_t control_vector;		// summed_up control vector
+double u_omega, u_v;		// unicycle model control vector
+double w_left, w_right; 	// left and right wheel speeds
+double ka = 100;
+double kb = 30;
+double kc = 0.001;
 //---------------------------------------------------------------------------------------//
 //-----------------------------------------------------------------------------------//
 /*FUNCTIONS*/
 static bool controller_init();
 static bool controller_init_time_step();
-
 static bool controller_init_motor();
-
 static void controller_print_log(double time);
-
-
 static bool controller_error(bool test, const char * message, int line, const char * fileName);
+
+void leader_update();
 
 
 
 //-----------------------------------------------------------------------------------//
 
-void compute_wheel_speeds(double u_x, double u_y, int *msl, int *msr) {
-	
-	// Compute the range and bearing to the wanted position
-	double heading_error = atan2(u_y, u_x);
-	double distance = sqrt(pow(u_x, 2) + pow(u_y, 2));
-	// Convert to wheel speeds!
-	*msl = (int) (distance-heading_error/M_PI)*MAX_SPEED_WEB*0.7;
-	*msr = (int) (distance+heading_error/M_PI)*MAX_SPEED_WEB*0.7;
-}
 
-
-
-void init_prox_sensor(){
-	int i;
-	char name[] = "ps0";
-	for(i = 0; i < NB_SENSORS; i++) {
-		ps[i]=wb_robot_get_device(name); // get sensor handle
-		// perform distance measurements every TIME_STEP millisecond
-		wb_distance_sensor_enable(ps[i], TIME_STEP);
-		name[2]++; // increase the device name to "ps1", "ps2", etc.
-	}
-}
-
-void proximity_vector(double *ox, double *oy)
-{
-	int i;
-	int sense = 0;
-	static double ds_value[NB_SENSORS]; 
-	//directions in which each sensors points
-	float sx[8] = {0.2588,0.7071,1, 0.5736,-0.5736,-1,-0.7071,-0.2588};
-	float sy[8] = {0.9659,0.7071,0,-0.8192,-0.8192, 0, 0.7071, 0.9659};
-
-	*ox = 0;
-	*oy = 0;	
-
-
-	for (i = 0; i < NB_SENSORS; i++)
-	{
-		ds_value[i] = wb_distance_sensor_get_value(ps[i]);
-		if(ds_value[i] > DETECT_RANGE)
-			sense = 1;
-		
-		*ox = *ox + (ds_value[i]/1000)*sx[i];
-		*oy = *oy + (ds_value[i]/1000)*sy[i];
-	}
-
-	*ox *= sense;
-	*oy *= sense;
-
-}
-
-void get_navigation_vector(double *n_x, double *n_y, pose_t goal)
-{
-	double e_theta, e_dist;
-
-	// Compute direction of the target point (norm saturates at 1)
-	// The vector is first computed in global frame, in polar coordinates
-	e_dist = sqrt(pow(goal.x - get_pose().x, 2)+pow(goal.y - get_pose().y, 2));
-	e_theta = atan2(goal.y - get_pose().y, goal.x - get_pose().x);
-
-	// Rotate the direction vector into the robot's frame
-	e_theta -= get_pose().heading;
-
-	// Saturate the norm of the vector at 1
-	if(e_dist > 1)
-		e_dist = 1;
-	
-
-	// Output the value in carthesian coordinates (in robot's frame)
-	*n_x = e_dist * cos(e_theta);
-	*n_y = e_dist * sin(e_theta);
-}
 
 int main() 
-{
-
-	// Goal point (this is where the leader goes)
-	pose_t goal;
-	goal.x = 0;
-	goal.y = -10;
-	goal.heading = 0;
-
-	// Coordinates representing direction of goal point (navigation vector)
-	double n_x;
-	double n_y;
-
-	// Coordinates representing direction of sensor obstacles (Braitenberg-esque)
-	double s_x;
-	double s_y;
-
-	// Coordinates representing direction of sensor movement (control law)
-	double u_x;
-	double u_y;
-	double u_norm; //norm of the control law (in practice saturates at 1)
-
-	// Left and right motor speeds
-	int msl_w;
-	int msr_w;
-
-	
-
+{	
+	migration_goal.x = 4;
+	migration_goal.y = 0;
+	migration_goal.heading = 0;
 	wb_robot_init();	
 	init_prox_sensor();
+
+	
 
 	if(CATCH_ERR(controller_init(), "Controller fails to init \n"))
 		return 1;
@@ -180,6 +82,7 @@ int main()
 		if(wb_robot_get_time() < TIME_INIT)
 		{
 			loc_calibrate(TIME_INIT,_robot.time_step);
+			controller_print_log(wb_robot_get_time());
 		}
 		else
 		{
@@ -188,33 +91,8 @@ int main()
 			// 2. Compute pose
 			loc_compute_pose();
 			
-			get_navigation_vector(&n_x, &n_y, goal);
-			// control law is a linear combination of goal and sensors
-
-
-			proximity_vector(&s_x, &s_y); // get sensor proximity vectorproximity_vector(&u_x, &u_y); // get sensor proximity vector
-
-			// Control vector is a linear combination of navigation and sensors for obstacle avoidance
-			u_x = n_x-10*s_x;
-			u_y = n_y-10*s_y;
-
-			// Saturate the norm of command vector at 1
-			u_norm = sqrt(pow(u_x, 2) + pow(u_y, 2));
-			if(u_norm>1){
-				u_x /= u_norm;
-				u_y /= u_norm;
-			}
-
-			// printf("%f , %f\n", u_x, u_y);
-
-
-			// outputing the control vector to the wheel speed (vector must of of norm <=1)
-			compute_wheel_speeds(u_x, u_y,  &msl_w, &msr_w);
-			wb_motor_set_velocity(_robot.left_motor, msl_w);
-			wb_motor_set_velocity(_robot.right_motor, msr_w);
-			
-			// Logging Step
-			controller_print_log(wb_robot_get_time());
+			// 3. Control
+			leader_update();
 
 		}
 	}
@@ -223,11 +101,23 @@ int main()
 
 }
 
+void leader_update()  
+{
+	//main update function
 
+	migration_urge(&migration_vector, loc_get_pose(), migration_goal); 			// get the migration vector (stored in the migration_vector global variable)
+	local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
+	// printf("ox = %f, oy = %f \Nur ", obstacle_avoidance_vector.x, obstacle_avoidance_vector.y);
+	control_vector = pose_add( pose_scale(0.005, obstacle_avoidance_vector), pose_scale(1,migration_vector));
 
+	unicycle_controller(&u_omega, &u_v, loc_get_pose(), control_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)
+	unicylce_to_wheels(&w_left, &w_right, u_omega, u_v,WHEEL_RADIUS,wheel_speed_threshold); 					// get the wheel speeds from the unicylce control law
+	wb_motor_set_velocity(_robot.left_motor, w_left);
+	wb_motor_set_velocity(_robot.right_motor, w_right);
 
+	// printf("x = %f, y = %f, heading =  %f \n", loc_get_pose().x, loc_get_pose().y, loc_get_pose().heading);
 
-
+}
 
 //INIT FUNCTIONS
 /**
@@ -312,7 +202,7 @@ bool controller_error(bool test, const char * message, int line, const char * fi
 
     sprintf(buffer, "file : %s, line : %d,  error : %s", fileName, line, message);
 
-    fprintf(stderr,buffer);
+    fprintf(stderr,"%s",buffer);
 
     return(true);
   }

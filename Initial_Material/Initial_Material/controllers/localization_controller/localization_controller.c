@@ -41,12 +41,8 @@ static simulation_t _robot;
 /*FUNCTIONS*/
 static bool controller_init();
 static bool controller_init_time_step();
-
 static bool controller_init_motor();
-
 static void controller_print_log(double time);
-
-
 static bool controller_error(bool test, const char * message, int line, const char * fileName);
 
 
@@ -89,12 +85,6 @@ int main()
 
 
 }
-
-
-
-
-
-
 
 //INIT FUNCTIONS
 /**
