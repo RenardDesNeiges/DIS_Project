@@ -101,7 +101,7 @@ model_rnd_vect_t rnd_vec;
 
 //functions
 
-static bool kalman_error(bool test, const char * message, int line, const char * fileName);
+bool kal_error(bool test, const char * message, int line, const char * fileName);
 static void kal_compute_K(int freq, double K[N_STATES][N_OBSERVABLES]);
 
 /**
@@ -193,7 +193,7 @@ void kal_compute_K(int freq, double K[N_STATES][N_OBSERVABLES])
 
 	
 	//compute K = cov*Ct/S
-	mat_inv_gauss(N_OBSERVABLES,S,invS);
+	CATCH_ERR(mat_inv_gauss(N_OBSERVABLES,S,invS),"The S Matrix is not invertible\n");
 	mat_mult(N_STATES,N_OBSERVABLES,N_OBSERVABLES,covCt,invS,K);
 	
 }
@@ -338,7 +338,7 @@ void kal_get_pose(double pose[N_STATES])
 	}
 }
 
-bool kalman_error(bool test, const char * message, int line, const char * fileName)
+bool kal_error(bool test, const char * message, int line, const char * fileName)
 {
   if (test) 
   {

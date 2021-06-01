@@ -18,7 +18,7 @@
 /*GLOBAL*/
 static double _T;
 
-static double integrated_speedxw, integrated_speedyw;
+static double integrated_speedxr, integrated_speedyr;
 static pose_t _odo_pose_acc, _odo_speed_acc, _odo_pose_enc;
 //-----------------------------------------------------------------------------------//
 
@@ -29,28 +29,57 @@ static pose_t _odo_pose_acc, _odo_speed_acc, _odo_pose_enc;
  * @param[in]  acc       The acceleration
  * @param[in]  acc_mean  The acc mean
  */
-void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3])
+void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3], double Aleft_enc, double Aright_enc)
 {
 	
-	double acc_ry = acc[0]-acc_mean[0];
-	double acc_rx = acc[1]-acc_mean[1];
+	double acc_yr = acc[0]-acc_mean[0];
+	double acc_xr = acc[1]-acc_mean[1];
 	
-	_odo_pose_acc.heading = _odo_pose_enc.heading;
 	
-	double acc_wx = cos(_odo_pose_acc.heading)*acc_rx+sin(_odo_pose_acc.heading)*acc_ry;
-	double acc_wy = -sin(_odo_pose_acc.heading)*acc_rx-cos(_odo_pose_acc.heading)*acc_ry;
-	double dxw,dyw;
-	//kind of cheating that allows to bypass the absence of gyroscope
-	_odo_pose_acc.heading = _odo_pose_enc.heading;
+	//  Rad to meter : Convert the wheel encoders units into meters
+	Aright_enc  =WHEEL_RADIUS*Aright_enc;
+	Aleft_enc= WHEEL_RADIUS*Aleft_enc;
+	// Comupute omega using the wheel encoders
+	double omega = (Aright_enc-Aleft_enc)/WHEEL_AXIS/_T;
 	
-	dxw = integrated_speedxw*_T+0.5*acc_wx*_T*_T;
-	dyw = integrated_speedyw*_T+0.5*acc_wy*_T*_T;
-	_odo_pose_acc.x += dxw;
-	_odo_pose_acc.y += dyw;
+	double dxr, dyr, dthetar;
+	double dspeedxr, dspeedyr;
+	double integrated_speedxnr, integrated_speedynr;
+	//compute the deltas in the robot frame
+	if (fabs(omega) < 0.000001)
+	{
+		dxr = 0.5*acc_xr*_T*_T+integrated_speedxr*_T;
+		dyr = 0.5*acc_yr*_T*_T+integrated_speedyr*_T;
+		dspeedxr = acc_xr*_T;
+		dspeedyr = acc_yr*_T;
+		dthetar = 0;
+	}
+	else
+	{
+		dthetar = omega*_T;
+		dxr =  acc_xr*(1-cos(dthetar))/omega/omega + acc_yr*(sin(dthetar))/omega/omega   - acc_yr*_T/omega+integrated_speedxr*_T;
+		dyr = -acc_xr*(sin(dthetar))/omega/omega   + acc_yr*(1-cos(dthetar))/omega/omega + acc_xr*_T/omega+integrated_speedyr*_T;
+		dspeedxr = acc_xr*sin(dthetar)/omega     - acc_yr*(1-cos(dthetar))/omega;
+		dspeedyr = acc_xr*(1-cos(dthetar))/omega + acc_yr*sin(dthetar)/omega;
+	}
+	
+	
+	_odo_pose_acc.x += dxr*cos(_odo_pose_acc.heading)-dyr*sin(_odo_pose_acc.heading);
+	_odo_pose_acc.y += dxr*sin(_odo_pose_acc.heading)+dyr*cos(_odo_pose_acc.heading);
+	_odo_pose_acc.heading += dthetar;
+	
+	//integrated speed in the old robot frame
+	integrated_speedxr += dspeedxr*cos(dthetar)-dspeedyr*sin(dthetar);
+	integrated_speedyr += dspeedxr*sin(dthetar)+dspeedyr*cos(dthetar);
+	
+	//integrated speed in the new robot frame
+	integrated_speedxnr = integrated_speedxr*cos(dthetar)-integrated_speedyr*sin(dthetar);
+	integrated_speedynr = integrated_speedxr*sin(dthetar)+integrated_speedyr*cos(dthetar);
+	
+	//change the frame:
+	integrated_speedxr = integrated_speedxnr;
+	integrated_speedyr = integrated_speedynr;
 
-	integrated_speedxw +=acc_wx*_T;
-	integrated_speedyw +=acc_wy*_T;
-	
 	memcpy(odo, &_odo_pose_acc, sizeof(pose_t));
 	
 	if(VERBOSE_ODO_ACC)
@@ -120,7 +149,7 @@ void odo_compute_encoders(pose_t* odo, double Aleft_enc, double Aright_enc)
 	// Compute heading speed	
 	double omega_w  = omega;
 	// Use mid-way heading value for speed computation	
-	double mid_way_heading = 0.5*_odo_pose_enc.heading + omega_w*_T;
+	double mid_way_heading = _odo_pose_enc.heading + 0.5*omega_w*_T;
 	// Update heading
 	_odo_pose_enc.heading += omega_w*_T;
 
@@ -160,8 +189,8 @@ void odo_compute_encoders(pose_t* odo, double Aleft_enc, double Aright_enc)
  */
 void odo_reset(int time_step)
 {
-	memset(&integrated_speedxw,0,sizeof(double));
-	memset(&integrated_speedyw,0,sizeof(double));
+	memset(&integrated_speedxr,0,sizeof(double));
+	memset(&integrated_speedyr,0,sizeof(double));
 
  	memset(&_odo_pose_acc, 0 , sizeof(pose_t));
 

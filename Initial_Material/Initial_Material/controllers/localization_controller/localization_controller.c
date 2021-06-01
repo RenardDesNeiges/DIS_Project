@@ -79,7 +79,7 @@ int main()
 			//trajectory_1(_robot.left_motor, _robot.right_motor);
 			//    trajectory_2(dev_left_motor, dev_right_motor);
 			trajectory_1_delay(_robot.left_motor, _robot.right_motor,TIME_INIT);
-			//lin_delay(_robot.left_motor, _robot.right_motor,TIME_INIT) ;
+			//circle_delay(_robot.left_motor, _robot.right_motor,TIME_INIT) ;
 			// Logging Step
 			controller_print_log(wb_robot_get_time());
 
