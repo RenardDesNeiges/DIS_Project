@@ -1,12 +1,12 @@
 /*****************************************************************************/
-/* File:         supervisor.c                                          */
+/* File:         supervisor.c                             		             */
 /* Version:      2.0                                                         */
 /* Date:         10-Oct-14 -- 06-Oct-2015                                    */
 /* Description:  The supervisor of a flock of robots which takes care of     */
-/*		 sending the positions of the robots to the mates     	     */
+/*				 sending the positions of the robots to the mates     	     */
 /*                                                                           */
-/* Author: 	 10-Oct-14 by Ali marjovi 				     */
-/*		 initiallz developed by Nicolas Correll    		     */
+/* Author: 	 10-Oct-14 by Ali marjovi 									     */
+/*				 initially developed by Nicolas Correll  		  		     */
 /*****************************************************************************/
 
 
@@ -59,10 +59,13 @@ void reset(void) {
 int main(int argc, char *args[]) {
 	float buffer[255];
 	float global_x,global_z,rel_x,rel_z, rel_range, rel_bearing;
+	double goal_x, goal_z;
 	double temp_err, err, avg_err;
 	int cnt,i,j;
-	int print_enabled = 0;
+	int print_enabled = 1;
 	int send_interval = 5;
+
+	double rel_goal_x[ROBOTS], rel_goal_z[ROBOTS];
 	
 	if (argc > 1) {
 		print_enabled = atoi(args[1]);
@@ -75,7 +78,6 @@ int main(int argc, char *args[]) {
 		printf("Sending at intervals of %d\n", send_interval);
 	}
 
-
 	reset();
 	avg_err = 0.0;
 	for(cnt = 0; ; cnt++) { /* The robot never dies! */
@@ -84,6 +86,7 @@ int main(int argc, char *args[]) {
 		err = 0.0;
 		for (i=0;i<ROBOTS;i++) {
 			for (j=0;j<ROBOTS;j++) {
+
 				/* Get data */
 				loc[j][0] = wb_supervisor_field_get_sf_vec3f(robs_translation[j])[0];
 				loc[j][1] = wb_supervisor_field_get_sf_vec3f(robs_translation[j])[1];
@@ -102,44 +105,52 @@ int main(int argc, char *args[]) {
 				}
 				else
 				{
-					global_x = loc[i][0] - loc[j][0];
-					global_z = loc[i][2] - loc[j][2];
+					goal_x = loc[i][0] - loc[j][0];
+					goal_z = loc[i][2] - loc[j][2];
 					/* Calculate relative coordinates */
-					rel_x = -global_x*cos(loc[i][3]) + global_z*sin(loc[i][3]);
-					rel_z = global_x*sin(loc[i][3]) + global_z*cos(loc[i][3]);
+					rel_x = -goal_x*cos(loc[i][3]) + goal_z*sin(loc[i][3]);
+					rel_z = goal_x*sin(loc[i][3]) + goal_z*cos(loc[i][3]);
 					rel_range = sqrt(rel_x * rel_x + rel_z * rel_z);
 					rel_bearing = -atan2(rel_x, rel_z);
 				}
+				
+				/* error metric computation */
+				if(i == 0)
+				{
+					/* If this is the first measure, save it for computation of the error later */
+					if(cnt == 0)
+					{
+						rel_goal_x[j] = rel_x;
+						rel_goal_z[j] = rel_z;
+					}
+
+					double e_x, e_z;
+
+					// /* Check error in position of robot */
+					e_x = pow(rel_x - rel_goal_x[j],2);
+					e_z = pow(rel_z - rel_goal_z[j],2);
+					err += e_x + e_z;
+				}
 
 
-		        // printf("relative position : %d, %d, %f, %f \n", i, j, rel_range, rel_bearing);
 
+				/* Pack the data in a buffer and send it to the robots */
 				buffer[0]= i;
 				buffer[1]= j;
 				buffer[2] = rel_range;
 				buffer[3] = rel_bearing;
-				// while (buffer[2] > M_PI) buffer[2] -= 2.0*M_PI;
-				// while (buffer[2] < -M_PI) buffer[2] += 2.0*M_PI;
 				if (cnt % send_interval == 0){
 					wb_emitter_send(emitter_device,(char *)buffer,4*sizeof(float));        
 					
 				}
-
-				/* Check error in position of robot */
-				// rel_x = global_x*cos(loc[0][3]) - global_z*sin(loc[0][3]);
-				// rel_z = -global_x*sin(loc[0][3]) - global_z*cos(loc[0][3]);
-				// temp_err = sqrt(pow(rel_x-good_rp[i][0],2) + pow(rel_z-good_rp[i][1],2));
-				// if (print_enabled)
-				// 	printf("Err %d: %.3f, ",i,temp_err);
-				// err += temp_err/ROBOTS;
 			}
+
+			
 		}
-		if (print_enabled)
-			printf("\n");
-		err = exp(-err/0.2);
+
 		avg_err += err;
 		if (print_enabled)
-			printf("Performance: %.2f, Average Performance: %.2f\n",err,avg_err/cnt);
+			printf("Error: %.2f, Average Error: %.2f\n",err,avg_err/cnt);
 
 		wb_robot_step(64); /* run one step */
 	}

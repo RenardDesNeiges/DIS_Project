@@ -31,4 +31,7 @@ void unicylce_to_wheels(double *w_left, double *w_right, double u_omega, double 
 
 void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose);
 
+void get_hyperparameters_from_supervisor(int* robot_id);
+
+
 #endif

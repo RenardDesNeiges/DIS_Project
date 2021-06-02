@@ -214,3 +214,7 @@ void unicylce_to_wheels(double *w_left, double *w_right, double u_omega, double 
     // printf("left = %f, right = %f \n",*w_left,*w_right);
 }
 
+
+void get_hyperparameters_from_supervisor(int* robot_id){
+    
+}
