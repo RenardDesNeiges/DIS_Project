@@ -6,11 +6,13 @@
 #include <webots/accelerometer.h>
 #include <webots/position_sensor.h>
 #include <webots/distance_sensor.h>
-#include "../localization_controller/odometry.h"
 #include <webots/emitter.h>
 #include <webots/receiver.h>
 
+#include "../localization_controller/odometry.h"
+#include "../communication/communication.h"
 #include "controller.h"
+
 
 #define TIME_STEP 64
 #define PROX_THRESHOLD 100
@@ -83,16 +85,17 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 		while (wb_receiver_get_queue_length(receiver) > 0) {
 			rbbuffer = (float*) wb_receiver_get_data(receiver);
             // printf("parsing buffer\n");
-			if((int)rbbuffer[0]==*robot_id){
+			if((int)rbbuffer[ID_I]==*robot_id){
                 initialized = 1;
 				rbbuffer = (float*) wb_receiver_get_data(receiver);
-				goal_range = rbbuffer[2];
-				goal_bearing = rbbuffer[3];
-                goal_pose[(int)rbbuffer[1]].x = goal_range * cos(goal_bearing);
-                goal_pose[(int)rbbuffer[1]].y = goal_range * sin(goal_bearing);
-                goal_pose[(int)rbbuffer[1]].heading = 0;
-				printf("Goal of %d r.t. %d: e_x = %.2f, e_y = %.2f\n", *robot_id, (int)rbbuffer[1], goal_pose[(int)rbbuffer[1]].x, goal_pose[(int)rbbuffer[1]].y);
+				goal_range = rbbuffer[RANGE];
+				goal_bearing = rbbuffer[BEARING];
+                goal_pose[(int)rbbuffer[ID_J]].x = goal_range * cos(goal_bearing);
+                goal_pose[(int)rbbuffer[ID_J]].y = goal_range * sin(goal_bearing);
+                goal_pose[(int)rbbuffer[ID_J]].heading = 0;
+				printf("Goal of %d r.t. %d: e_x = %.2f, e_y = %.2f\n", *robot_id, (int)rbbuffer[ID_J], goal_pose[(int)rbbuffer[ID_J]].x, goal_pose[(int)rbbuffer[ID_J]].y);
 			}
+            printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",(int)rbbuffer[ID_I],(int)rbbuffer[ID_J],rbbuffer[RANGE],rbbuffer[BEARING]);
 			wb_receiver_next_packet(receiver);
 		}
 	}
@@ -111,12 +114,11 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     while(wb_receiver_get_queue_length(receiver) > 0){
         rbbuffer = (float*) wb_receiver_get_data(receiver);
 
-        int i = (int)rbbuffer[0];
-        int j = (int)rbbuffer[1];
+        int i = (int)rbbuffer[ID_I];
+        int j = (int)rbbuffer[ID_J];
 
-        range[i][j] = rbbuffer[2];
-        bearing[i][j] = rbbuffer[3];
-        // printf("relative position : %d, %d, %f, %f \n", (int)rbbuffer[0], (int)rbbuffer[1], rbbuffer[2], rbbuffer[3]);
+        range[i][j] = rbbuffer[RANGE];
+        bearing[i][j] = rbbuffer[BEARING];
 
         wb_receiver_next_packet(receiver);
     }

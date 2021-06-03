@@ -19,17 +19,20 @@
 #include <webots/emitter.h>
 #include <webots/supervisor.h>
 
-#define ROBOTS 4
+#include "../pso/pso.h"
+#include "../communication/communication.h"
 
-static WbNodeRef robs[ROBOTS];
-static WbFieldRef robs_translation[ROBOTS];
-static WbFieldRef robs_rotation[ROBOTS];
+#define ROBOT_NUMBER 4
+
+static WbNodeRef robs[ROBOT_NUMBER];
+static WbFieldRef robs_translation[ROBOT_NUMBER];
+static WbFieldRef robs_rotation[ROBOT_NUMBER];
 WbDeviceTag emitter_device;
 
-double loc[ROBOTS][4];
+double loc[ROBOT_NUMBER][4];
 
 /* Good relative positions for each robot */
-double good_rp[ROBOTS][2] = { {0.0,0.0}, {0.0,-0.30}};
+double good_rp[ROBOT_NUMBER][2] = { {0.0,0.0}, {0.0,-0.30}};
 
 void reset(void) {
 
@@ -45,7 +48,7 @@ void reset(void) {
 	robs_rotation[0] = wb_supervisor_node_get_field(robs[0],"rotation");
 
 	rob[5]++;
-	for (i=1;i<ROBOTS;i++) {
+	for (i=1;i<ROBOT_NUMBER;i++) {
 
 		robs[i] = wb_supervisor_node_get_from_def(rob);
 		robs_translation[i] = wb_supervisor_node_get_field(robs[i],"translation");
@@ -65,7 +68,7 @@ int main(int argc, char *args[]) {
 	int print_enabled = 1;
 	int send_interval = 5;
 
-	double rel_goal_x[ROBOTS], rel_goal_z[ROBOTS];
+	double rel_goal_x[ROBOT_NUMBER], rel_goal_z[ROBOT_NUMBER];
 	
 	if (argc > 1) {
 		print_enabled = atoi(args[1]);
@@ -84,8 +87,8 @@ int main(int argc, char *args[]) {
 
 		/* Send relative positions to followers */
 		err = 0.0;
-		for (i=0;i<ROBOTS;i++) {
-			for (j=0;j<ROBOTS;j++) {
+		for (i=0;i<ROBOT_NUMBER;i++) {
+			for (j=0;j<ROBOT_NUMBER;j++) {
 
 				/* Get data */
 				loc[j][0] = wb_supervisor_field_get_sf_vec3f(robs_translation[j])[0];
@@ -126,7 +129,7 @@ int main(int argc, char *args[]) {
 
 					double e_x, e_z;
 
-					// /* Check error in position of robot */
+					/* Check error in position of robot */
 					e_x = pow(rel_x - rel_goal_x[j],2);
 					e_z = pow(rel_z - rel_goal_z[j],2);
 					err += e_x + e_z;
@@ -135,12 +138,13 @@ int main(int argc, char *args[]) {
 
 
 				/* Pack the data in a buffer and send it to the robots */
-				buffer[0]= i;
-				buffer[1]= j;
-				buffer[2] = rel_range;
-				buffer[3] = rel_bearing;
+				buffer[PACKET_TYPE]= SENSOR;
+				buffer[ID_I]= i;
+				buffer[ID_J]= j;
+				buffer[RANGE] = rel_range;
+				buffer[BEARING] = rel_bearing;
 				if (cnt % send_interval == 0){
-					wb_emitter_send(emitter_device,(char *)buffer,4*sizeof(float));        
+					wb_emitter_send(emitter_device,(char *)buffer,BUFFER_SIZE*sizeof(float));        
 					
 				}
 			}

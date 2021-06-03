@@ -511,7 +511,7 @@ void loc_compute_pose()
 			
 			if(fabs(last_gps_time_s-wb_robot_get_time())<TOL)
 			{
-				if VERBOSE_KALMAN
+				if(VERBOSE_KALMAN)
 					printf("UPDATE GPS\n");
 				loc_format_y(y_meas,F_GPS);
 				kal_update_freq(F_GPS,y_meas);
