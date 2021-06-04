@@ -23,12 +23,15 @@
 #include "../communication/communication.h"
 
 #define ROBOT_NUMBER 4
-#define SIM_TIME 20
+#define SIM_TIME 200
 
 static WbNodeRef robs[ROBOT_NUMBER];
 static WbFieldRef robs_translation[ROBOT_NUMBER];
 static WbFieldRef robs_rotation[ROBOT_NUMBER];
 WbDeviceTag emitter_device;
+
+double start_angle[4] = {0.0,1.0,0.0,-1.570796};
+double start_pose[4][3] = {{-2.60212,0,0},{-2.80212,0,0.16},{-2.80212,0,-0.16},{-2.34203,0,0.0}};
 
 double loc[ROBOT_NUMBER][4];
 
@@ -109,11 +112,6 @@ double compute_pos_error(int cnt, double* rel_goal_x,double* rel_goal_z){
 	return err;
 }
 
-void reset_simulation()
-{
-	
-}
-
 void set_hyperparameters(float* hyperparamters)
 {
 	float buffer[BUFFER_SIZE];
@@ -122,6 +120,22 @@ void set_hyperparameters(float* hyperparamters)
 		buffer[i] = hyperparamters[i];
 
 	wb_emitter_send(emitter_device,(float *)buffer,BUFFER_SIZE*sizeof(float));
+}
+
+void reset_positions()
+{
+	for(int i = 0; i < ROBOT_NUMBER; i++)
+	{
+
+		wb_supervisor_field_set_sf_vec3f(wb_supervisor_node_get_field(robs[i],"translation"), start_pose[i]);
+		wb_supervisor_field_set_sf_rotation(wb_supervisor_node_get_field(robs[i],"rotation"), start_angle);
+	}
+}
+
+void reset_simulation(float* hyperparamters)
+{
+	reset_positions();
+	set_hyperparameters(hyperparamters);
 }
 
 double run_simulation(print_enabled){;
@@ -161,7 +175,7 @@ int main(int argc, char *args[]) {
 
 	for(int i = 1; i< 15; i++)
 	{
-		set_hyperparameters(hyperparameters);
+		reset_simulation(hyperparameters);
 		cost = run_simulation(print_enabled)/SIM_TIME;
 		printf("cost = %f\n", cost);
 	}

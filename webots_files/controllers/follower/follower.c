@@ -79,38 +79,48 @@ void control_update();
 
 int main() 
 {	
-	migration_goal.x = 4;
-	migration_goal.y = 0;
-	migration_goal.heading = 0;
-	wb_robot_init();	
-	init_prox_sensor();
-
 	
 
-	if(CATCH_ERR(controller_init(), "Controller fails to init \n"))
-		return 1;
-
-	while (wb_robot_step(_robot.time_step) != -1) 
+	int reset;
+	
+	for(;;)
 	{
-		if(wb_robot_get_time() < TIME_INIT)
+		printf("reset\n");
+		migration_goal.x = MIGRATION_X;
+		migration_goal.y = MIGRATION_Y;
+		migration_goal.heading = 0;
+		wb_robot_init();	
+		init_prox_sensor();
+		if(CATCH_ERR(controller_init(), "Controller fails to init \n"))
+			return 1;
+
+		reset = 0;
+
+		while (wb_robot_step(_robot.time_step) != -1 && reset == 0) 
 		{
-			loc_calibrate(TIME_INIT,_robot.time_step);
-			controller_print_log(wb_robot_get_time());
-		}
-		else
-		{
-			#ifdef PSO	
-			get_hyperparameters_from_supervisor(hyperparameters);
-			#endif // 
-			// 1. Perception / Measurement
-			loc_update_measures();
-			// 2. Compute pose
-			loc_compute_pose();
-			
-			// 3. Control
-			control_update();
+			if(wb_robot_get_time() < TIME_INIT)
+			{
+				loc_calibrate(TIME_INIT,_robot.time_step);
+				controller_print_log(wb_robot_get_time());
+			}
+			else
+			{
+				#ifdef PSO	
+				reset = get_hyperparameters_from_supervisor(hyperparameters); // getting a hyperparamater update resets the controller
+				#endif // 
+				// 1. Perception / Measurement
+				loc_update_measures();
+				// 2. Compute pose
+				loc_compute_pose();
+				
+				// 3. Control
+				control_update();
+			}
 		}
 	}
+
+
+	
 
 
 

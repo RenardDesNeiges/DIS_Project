@@ -4,6 +4,9 @@
 #define OBSTACLE_BUFFER_SIZE 100
 #define MAX_OBSTACLE_AGE 100
 
+#define MIGRATION_X 0
+#define MIGRATION_Y 4
+
 #define PSO
 
 #include <webots/robot.h>

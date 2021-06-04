@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <string.h>
 
@@ -78,40 +79,49 @@ void control_update();
 
 int main() 
 {	
-	migration_goal.x = 4;
-	migration_goal.y = 0;
-	migration_goal.heading = 0;
-	wb_robot_init();	
-	init_prox_sensor();
-
 	
 
-	if(CATCH_ERR(controller_init(), "Controller fails to init \n"))
-		return 1;
+	int reset;
 
-	while (wb_robot_step(_robot.time_step) != -1) 
-	{
-		if(wb_robot_get_time() < TIME_INIT)
+	
+	for(;;)
+	{	
+		printf("reset\n");
+		migration_goal.x = MIGRATION_X;
+		migration_goal.y = MIGRATION_Y;
+		migration_goal.heading = 0;
+		wb_robot_init();	
+		init_prox_sensor();
+		if(CATCH_ERR(controller_init(), "Controller fails to init \n"))
+			return 1;
+
+		reset = 0;
+
+		while (wb_robot_step(_robot.time_step) != -1 && reset == 0) 
 		{
-			loc_calibrate(TIME_INIT,_robot.time_step);
-			controller_print_log(wb_robot_get_time());
-		}
-		else
-		{
-			#ifdef PSO	
-			get_hyperparameters_from_supervisor(hyperparameters);
-			#endif // 
+			if(wb_robot_get_time() < TIME_INIT)
+			{
+				loc_calibrate(TIME_INIT,_robot.time_step);
+				controller_print_log(wb_robot_get_time());
+			}
+			else
+			{
+				#ifdef PSO	
+				reset = get_hyperparameters_from_supervisor(hyperparameters); // getting a hyperparamater update resets the controller
+				#endif // 
 
-			// 1. Perception / Measurement
-			loc_update_measures();
-			// 2. Compute pose
-			loc_compute_pose();
-			
-			// 3. Control
-			control_update();
+				// 1. Perception / Measurement
+				loc_update_measures();
+				// 2. Compute pose
+				loc_compute_pose();
+				
+				// 3. Control
+				control_update();
 
+			}
 		}
 	}
+	
 
 
 
@@ -142,6 +152,8 @@ void control_update()
 	local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
 
 	control_vector = pose_add_3(pose_scale(1,migration_vector), pose_scale(0,consensus_vector),pose_scale(0.005, obstacle_avoidance_vector));
+
+	printf("(%f,%f)\n",migration_vector.x,migration_vector.y);
 	
 
 	unicycle_controller(&u_omega, &u_v, loc_get_pose(), control_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)
