@@ -8,8 +8,7 @@
 #include <webots/position_sensor.h>
 #include <webots/distance_sensor.h>
 #include "../localization_controller/odometry.h"
-
-#define ROBOT_NUMBER 4
+#include "../communication/communication.h"
 
 //initializes the proximity sensors
 void init_prox_sensor();
@@ -21,7 +20,7 @@ void migration_urge(pose_t *migration, pose_t robot, pose_t goal);
 void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pose, double kp, double ki, int robot_id, double* w);
 
 // returns a local avoidance vector (as a pose structure), passed by a pointer
-void local_avoidance_controller(pose_t *local, pose_t robot);
+void local_avoidance_controller(pose_t *local, pose_t robot, pose_t control);
 
 // returns a local avoidance vector (as a pose structure), passed by a pointer
 void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, double ka, double kb, double kc);

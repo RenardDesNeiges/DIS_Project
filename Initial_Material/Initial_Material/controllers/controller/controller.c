@@ -16,7 +16,7 @@
 
 
 #define TIME_STEP 64
-#define PROX_THRESHOLD 100
+#define PROX_THRESHOLD 120
 
 double range[ROBOT_NUMBER];
 double bearing[ROBOT_NUMBER];
@@ -27,6 +27,7 @@ WbDeviceTag receiver;          	// Handle for the receiver node for range and be
 WbDeviceTag emitter;          	// Handle for the emitter node for range and bearing information
 
 double cix = 0, ciy = 0, cih = 0; // integral terms of the concensus controller
+double ox = 0, oy = 0, obstacle_filter = 0.7;
 
 void init_prox_sensor(){
 	char name[] = "ps0";
@@ -69,11 +70,12 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
     // initializing the reciever device
 	robot_name=(char*) wb_robot_get_name(); 
 
-	receiver    = wb_robot_get_device("receiver");
-	emitter    = wb_robot_get_device("emitter");
+	receiver = wb_robot_get_device("receiver");
+	emitter = wb_robot_get_device("emitter");
 	sscanf(robot_name,"epuck%d",robot_id);    // read robot id from the robot's name
 
 	wb_receiver_enable(receiver,64);
+
 
 
     for(int i = 0; i<ROBOT_NUMBER; i++)
@@ -90,7 +92,7 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 		while (wb_receiver_get_queue_length(receiver) == 0) {
 			// printf("waiting for supervisor\n"); 
 			wb_robot_step(64); // Executing the simulation for 64ms
-            send_ping();
+            send_ping(); //send a ping to allow the other robot to initialize as well
 		}  
 		while (wb_receiver_get_queue_length(receiver) > 0) {
             const double *message_direction;
@@ -142,7 +144,7 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
 
         wb_receiver_next_packet(receiver);
 
-        printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",robot_id,id,range[id],bearing[id]);
+        // printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",robot_id,id,range[id],bearing[id]);
     }
 
     for(int i = 0; i<ROBOT_NUMBER; i++)
@@ -175,25 +177,63 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     
 }
 
-void local_avoidance_controller(pose_t *local, pose_t robot)
+void local_avoidance_controller(pose_t *local, pose_t robot, pose_t control)
 {
-    double gamma[8] = {M_PI/12,M_PI/4,M_PI/2,(5/6)*M_PI,-M_PI/12,-M_PI/4,-M_PI/2,-(5/6)*M_PI}; // IR sensor angles
-    double px = 0;
-    double py = 0;
-    
+    double gamma[8] = {-M_PI/12,-M_PI/4,-M_PI/2,-(5/6)*M_PI,M_PI/12,M_PI/4,M_PI/2,(5/6)*M_PI}; // IR sensor angles
+    double ox_a = 0, oy_a = 0, o_n, dot;
+    double rel_angle = 0;
     for(int i = 0; i<8; i++){
         prox_value[i] = wb_distance_sensor_get_value(prox_address[i]);
         if(prox_value[i] < PROX_THRESHOLD)
             prox_value[i] = 0;
-        px -= prox_value[i] * sin(gamma[i] + robot.heading);
-        py -= prox_value[i] * cos(gamma[i] + robot.heading);
+        ox_a -= prox_value[i] * sin(gamma[i] + robot.heading);
+        oy_a -= prox_value[i] * cos(gamma[i] + robot.heading);
 
     }
-    double ph = atan2(py, px);
+    if(ox_a != 0 || oy_a != 0)
+    {
+        // normalize the obstacle direction vector and rotate it 90deg
+        o_n = sqrt(ox_a*ox_a+oy_a*oy_a);
+        ox_a /= o_n;
+        oy_a /= o_n;
 
-    local->x = px;
-    local->y = py;
-    local->heading = ph;
+        rel_angle = atan2(oy_a, ox_a) * 1.5;
+
+        
+    }
+    
+
+    ox = ox_a * obstacle_filter + ox * (1-obstacle_filter);
+    oy = oy_a * obstacle_filter + oy * (1-obstacle_filter);
+
+    if(fabs(ox) > 0.0001 || fabs(oy) > 0.0001)
+    {
+         //project the vector on the obstacle normalized direction vector
+
+        dot = ox * control.x + oy * control.y;
+
+        //set the values
+        local->x = dot * ox*10;
+        local->y = dot * oy*10;
+        local->heading = control.heading;
+    }
+    else
+    {
+        // if the obstacle direction vector is 0, then just pass the control vector
+        local->x = control.x;
+        local->y = control.y;
+        local->heading = control.heading;
+
+    }
+
+
+    printf("angle :%f, control: (%f, %f), local: (%f,%f) \n",rel_angle,control.x,control.y,local->x,local->y);
+
+    // double ph = atan2(py, px);
+
+    // printf("%f, %f\n",px, py);
+
+    
 }
 
 void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, double ka, double kb, double kc)

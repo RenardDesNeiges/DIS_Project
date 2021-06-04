@@ -9,4 +9,5 @@ build/release/leader.o: leader.c \
   ../localization_controller/odometry.h \
   ../localization_controller/localization.h ../controller/controller.h \
   /Applications/Webots.app/include/controller/c/webots/distance_sensor.h \
-  ../controller/../localization_controller/odometry.h
+  ../controller/../localization_controller/odometry.h \
+  ../controller/../communication/communication.h
