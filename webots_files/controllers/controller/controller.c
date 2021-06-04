@@ -364,19 +364,21 @@ void unicylce_to_wheels(double *w_left, double *w_right, double u_omega, double 
 
 int get_hyperparameters_from_supervisor(double *hyperparameters)
 {
+    
 
     int updated = 0;
-    double *rbbuffer;
+    float *rbbuffer;
 
-    while (wb_receiver_get_queue_length(pso_receiver) == 0)
+    while (wb_receiver_get_queue_length(pso_receiver) > 0)
     {
-        rbbuffer = (double*) wb_receiver_get_data(pso_receiver);
+        rbbuffer = (float*) wb_receiver_get_data(pso_receiver);
+        printf("[");
         for(int i = 0; i < BUFFER_SIZE; i++)
         {
             hyperparameters[i] = rbbuffer[i];
-            printf("%f", hyperparameters[i]);
+            printf("%f ;", hyperparameters[i]);
         }
-        printf("\n");
+        printf("]\n");
         wb_receiver_next_packet(pso_receiver);
         updated = 1;
     }

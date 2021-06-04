@@ -23,7 +23,7 @@
 #include "../communication/communication.h"
 
 #define ROBOT_NUMBER 4
-#define SIM_TIME 400
+#define SIM_TIME 20
 
 static WbNodeRef robs[ROBOT_NUMBER];
 static WbFieldRef robs_translation[ROBOT_NUMBER];
@@ -40,7 +40,6 @@ void reset_supervisor(void) {
 	wb_robot_init();
 
 	char rob[7] = "epuck0";
-	char emitter0[8] = "emitter";
 	int i;
 	robs[0] = wb_supervisor_node_get_from_def(rob);
 
@@ -56,7 +55,7 @@ void reset_supervisor(void) {
 		robs_rotation[i] = wb_supervisor_node_get_field(robs[i],"rotation");    
 		rob[5]++;
 	}
-	emitter_device = wb_robot_get_device(emitter0);
+	emitter_device = wb_robot_get_device("emitter");
 
 }
 
@@ -110,6 +109,21 @@ double compute_pos_error(int cnt, double* rel_goal_x,double* rel_goal_z){
 	return err;
 }
 
+void reset_simulation()
+{
+	
+}
+
+void set_hyperparameters(float* hyperparamters)
+{
+	float buffer[BUFFER_SIZE];
+
+	for(int i = 0; i < BUFFER_SIZE; i++)
+		buffer[i] = hyperparamters[i];
+
+	wb_emitter_send(emitter_device,(float *)buffer,BUFFER_SIZE*sizeof(float));
+}
+
 double run_simulation(print_enabled){;
 	int cnt;
 	double err = 0.0, avg_err = 0.0;
@@ -128,13 +142,28 @@ double run_simulation(print_enabled){;
 
 int main(int argc, char *args[]) {
 	
-	int print_enabled = 1;
-
+	int print_enabled = 0;
+	double cost;
 	reset_supervisor();
 
-	for(int i = 1; i< 5; i++)
+	float hyperparameters[BUFFER_SIZE];
+	hyperparameters[ALPHA] = 0.0;
+	hyperparameters[BETA_L] = 1.0;
+	hyperparameters[BETA_F] = 2.0;
+	hyperparameters[THETA_L] = 3.0;
+	hyperparameters[THETA_F] = 4.0;
+	hyperparameters[LAMBDA] = 5.0;
+	hyperparameters[IOTA] = 6.0;
+	hyperparameters[K_A] = 7.0;
+	hyperparameters[K_B] = 8.0;
+	hyperparameters[K_C] = 9.0;
+	hyperparameters[EPSILON_L] = 10.0;
+
+	for(int i = 1; i< 15; i++)
 	{
-		run_simulation(print_enabled);
+		set_hyperparameters(hyperparameters);
+		cost = run_simulation(print_enabled)/SIM_TIME;
+		printf("cost = %f\n", cost);
 	}
 	
 	return 0;

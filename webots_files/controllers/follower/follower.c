@@ -99,6 +99,9 @@ int main()
 		}
 		else
 		{
+			#ifdef PSO	
+			get_hyperparameters_from_supervisor(hyperparameters);
+			#endif // 
 			// 1. Perception / Measurement
 			loc_update_measures();
 			// 2. Compute pose
