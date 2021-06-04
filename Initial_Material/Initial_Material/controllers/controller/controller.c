@@ -2,6 +2,7 @@
 #include <webots/motor.h>
 #include <webots/gps.h>
 #include <stdio.h>
+#include <string.h>
 #include <math.h>
 #include <webots/accelerometer.h>
 #include <webots/position_sensor.h>
@@ -17,11 +18,13 @@
 #define TIME_STEP 64
 #define PROX_THRESHOLD 100
 
-double range[ROBOT_NUMBER][ROBOT_NUMBER];
-double bearing[ROBOT_NUMBER][ROBOT_NUMBER];
+double range[ROBOT_NUMBER];
+double bearing[ROBOT_NUMBER];
 double prox_value[8];
 WbDeviceTag prox_address[8];
+char* robot_name; 
 WbDeviceTag receiver;          	// Handle for the receiver node for range and bearing information
+WbDeviceTag emitter;          	// Handle for the emitter node for range and bearing information
 
 double cix = 0, ciy = 0, cih = 0; // integral terms of the concensus controller
 
@@ -51,16 +54,23 @@ void migration_urge(pose_t *migration, pose_t robot, pose_t goal)
     migration->heading = goal.heading;
 }
 
+void send_ping(void) {
+	char out[10];
+	strcpy(out,robot_name);  // in the ping message we send the name of the robot.
+	wb_emitter_send(emitter,out,strlen(out)+1); 
+}
+
 void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 {
 
     double goal_range, goal_bearing;
-    float *rbbuffer;
+    char *rbbuffer;
 
     // initializing the reciever device
-	char* robot_name; robot_name=(char*) wb_robot_get_name(); 
+	robot_name=(char*) wb_robot_get_name(); 
 
 	receiver    = wb_robot_get_device("receiver");
+	emitter    = wb_robot_get_device("emitter");
 	sscanf(robot_name,"epuck%d",robot_id);    // read robot id from the robot's name
 
 	wb_receiver_enable(receiver,64);
@@ -68,7 +78,6 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 
     for(int i = 0; i<ROBOT_NUMBER; i++)
     {
-
         goal_pose[i].x = 0;
         goal_pose[i].y = 0;
         goal_pose[i].heading = 0;         
@@ -81,21 +90,25 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 		while (wb_receiver_get_queue_length(receiver) == 0) {
 			// printf("waiting for supervisor\n"); 
 			wb_robot_step(64); // Executing the simulation for 64ms
+            send_ping();
 		}  
 		while (wb_receiver_get_queue_length(receiver) > 0) {
-			rbbuffer = (float*) wb_receiver_get_data(receiver);
+            const double *message_direction;
+            double message_rssi;
+			rbbuffer = (char*) wb_receiver_get_data(receiver);
             // printf("parsing buffer\n");
-			if((int)rbbuffer[ID_I]==*robot_id){
-                initialized = 1;
-				rbbuffer = (float*) wb_receiver_get_data(receiver);
-				goal_range = rbbuffer[RANGE];
-				goal_bearing = rbbuffer[BEARING];
-                goal_pose[(int)rbbuffer[ID_J]].x = goal_range * cos(goal_bearing);
-                goal_pose[(int)rbbuffer[ID_J]].y = goal_range * sin(goal_bearing);
-                goal_pose[(int)rbbuffer[ID_J]].heading = 0;
-				printf("Goal of %d r.t. %d: e_x = %.2f, e_y = %.2f\n", *robot_id, (int)rbbuffer[ID_J], goal_pose[(int)rbbuffer[ID_J]].x, goal_pose[(int)rbbuffer[ID_J]].y);
-			}
-            printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",(int)rbbuffer[ID_I],(int)rbbuffer[ID_J],rbbuffer[RANGE],rbbuffer[BEARING]);
+            int id_j = (int)(rbbuffer[5]-'0');  // since the name of the sender is in the received message. Note: this does not work for robots having id bigger than 9!
+            initialized = 1;
+            message_direction = wb_receiver_get_emitter_direction(receiver);
+            message_rssi = wb_receiver_get_signal_strength(receiver);
+            goal_bearing = -atan2(message_direction[2], message_direction[0])-M_PI/2;
+            goal_range = sqrt((1/message_rssi));
+            goal_pose[id_j].x = goal_range * cos(goal_bearing);
+            goal_pose[id_j].y = goal_range * sin(goal_bearing);
+            goal_pose[id_j].heading = 0;
+            // printf("Goal of %d r.t. %d: e_x = %.2f, e_y = %.2f\n", *robot_id, id_j, goal_pose[(int)rbbuffer[id_j]].x, goal_pose[(int)rbbuffer[id_j]].y);
+
+            printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",*robot_id,id_j,goal_range,goal_bearing);
 			wb_receiver_next_packet(receiver);
 		}
 	}
@@ -106,34 +119,47 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 
 void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pose, double kp, double ki, int robot_id, double* w)
 {
-    float *rbbuffer;       
+    char *rbbuffer;       
     double px = 0, py = 0, ph = 0; //proportional terms
     // double range, bearing;
     double e_x, e_y;
 
+    send_ping();
+
+
     while(wb_receiver_get_queue_length(receiver) > 0){
-        rbbuffer = (float*) wb_receiver_get_data(receiver);
+        const double *message_direction;
+        double message_rssi;
 
-        int i = (int)rbbuffer[ID_I];
-        int j = (int)rbbuffer[ID_J];
+        rbbuffer = (char*) wb_receiver_get_data(receiver);
 
-        range[i][j] = rbbuffer[RANGE];
-        bearing[i][j] = rbbuffer[BEARING];
+        int id = (int)(rbbuffer[5]-'0');
+
+        message_direction = wb_receiver_get_emitter_direction(receiver);
+        message_rssi = wb_receiver_get_signal_strength(receiver);
+        bearing[id] = -atan2(message_direction[2], message_direction[0])+robot_pose.heading-M_PI/2;
+        range[id] = sqrt((1/message_rssi));
 
         wb_receiver_next_packet(receiver);
+
+        printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",robot_id,id,range[id],bearing[id]);
     }
 
     for(int i = 0; i<ROBOT_NUMBER; i++)
     {
+        if(i!= robot_id)
+        {
 
-        double global_bearing = robot_pose.heading + bearing[robot_id][i];
-        e_x = goal_pose[i].x - cos(global_bearing)*range[robot_id][i];
-        e_y = goal_pose[i].y - sin(global_bearing)*range[robot_id][i];
+            double global_bearing = bearing[i];
+            e_x = goal_pose[i].x - cos(global_bearing)*range[i];
+            e_y = goal_pose[i].y - sin(global_bearing)*range[i];
 
 
 
-        px -= w[i] * e_x;
-        py -= w[i] * e_y;            
+            px -= w[i] * e_x;
+            py -= w[i] * e_y;            
+
+        }
     }
 
 
@@ -145,8 +171,6 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     consensus->y = kp*py + ciy;
     consensus->heading = kp*ph + cih;
 
-    // printf("px = %f, py = %f, cx = %f, cy = %f\n", px, py,consensus->x, consensus->y);
-    // printf("error = %f, cx = %f, cy = %f\n", sqrt(px*px + py*py),consensus->x, consensus->y);
 
     
 }

@@ -53,6 +53,7 @@ double ki = 0.5;
 double w[ROBOT_NUMBER] = {5, .5, .5, .5};
 int robot_id;
 pose_t goal_pose[ROBOT_NUMBER];		// control vector of the migratory urge
+
 //---------------------------------------------------------------------------------------//
 //-----------------------------------------------------------------------------------//
 /*FUNCTIONS*/
