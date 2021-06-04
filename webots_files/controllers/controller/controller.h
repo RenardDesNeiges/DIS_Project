@@ -1,6 +1,11 @@
 #ifndef CONTOLLER_H
 #define CONTOLLER_H
 
+#define OBSTACLE_BUFFER_SIZE 100
+#define MAX_OBSTACLE_AGE 100
+
+#define PSO
+
 #include <webots/robot.h>
 #include <webots/motor.h>
 #include <webots/gps.h>
@@ -20,7 +25,7 @@ void migration_urge(pose_t *migration, pose_t robot, pose_t goal);
 void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pose, double kp, double ki, int robot_id, double* w);
 
 // returns a local avoidance vector (as a pose structure), passed by a pointer
-void local_avoidance_controller(pose_t *local, pose_t robot, pose_t control);
+void local_avoidance_controller(pose_t *local, pose_t robot);
 
 // returns a local avoidance vector (as a pose structure), passed by a pointer
 void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, double ka, double kb, double kc);
@@ -30,7 +35,9 @@ void unicylce_to_wheels(double *w_left, double *w_right, double u_omega, double 
 
 void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose);
 
-void get_hyperparameters_from_supervisor(int* robot_id);
+void init_pso_reciever();
+
+int get_hyperparameters_from_supervisor(double *hyperparameters);
 
 
 #endif

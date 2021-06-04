@@ -24,10 +24,17 @@ double prox_value[8];
 WbDeviceTag prox_address[8];
 char* robot_name; 
 WbDeviceTag receiver;          	// Handle for the receiver node for range and bearing information
+WbDeviceTag pso_receiver;          	// Handle for the receiver node for range and bearing information
 WbDeviceTag emitter;          	// Handle for the emitter node for range and bearing information
 
 double cix = 0, ciy = 0, cih = 0; // integral terms of the concensus controller
-double ox = 0, oy = 0, obstacle_filter = 0.7;
+double ox = 0, oy = 0, obstacle_filter = 0.2;
+
+pose_t obstacle_buffer[OBSTACLE_BUFFER_SIZE];
+double obstacle_age[OBSTACLE_BUFFER_SIZE];
+int obstacle_count = 0;
+
+pose_t prev_pose;
 
 void init_prox_sensor(){
 	char name[] = "ps0";
@@ -37,6 +44,9 @@ void init_prox_sensor(){
 		wb_distance_sensor_enable(prox_address[i], TIME_STEP);
 		name[2]++; // increase the device name to "ps1", "ps2", etc.
 	}
+    for(int i  = 0; i<OBSTACLE_BUFFER_SIZE; i++){
+        obstacle_age[i] = -1;
+    }
 }
 
 void migration_urge(pose_t *migration, pose_t robot, pose_t goal)
@@ -87,33 +97,39 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 
 	//read the initial packets
 	int initialized = 0;
-	while(!initialized){
-		/* Wait until supervisor sent range and bearing information */
-		while (wb_receiver_get_queue_length(receiver) == 0) {
-			// printf("waiting for supervisor\n"); 
-			wb_robot_step(64); // Executing the simulation for 64ms
-            send_ping(); //send a ping to allow the other robot to initialize as well
-		}  
-		while (wb_receiver_get_queue_length(receiver) > 0) {
-            const double *message_direction;
-            double message_rssi;
-			rbbuffer = (char*) wb_receiver_get_data(receiver);
-            // printf("parsing buffer\n");
-            int id_j = (int)(rbbuffer[5]-'0');  // since the name of the sender is in the received message. Note: this does not work for robots having id bigger than 9!
-            initialized = 1;
-            message_direction = wb_receiver_get_emitter_direction(receiver);
-            message_rssi = wb_receiver_get_signal_strength(receiver);
-            goal_bearing = -atan2(message_direction[2], message_direction[0])-M_PI/2;
-            goal_range = sqrt((1/message_rssi));
-            goal_pose[id_j].x = goal_range * cos(goal_bearing);
-            goal_pose[id_j].y = goal_range * sin(goal_bearing);
-            goal_pose[id_j].heading = 0;
-            // printf("Goal of %d r.t. %d: e_x = %.2f, e_y = %.2f\n", *robot_id, id_j, goal_pose[(int)rbbuffer[id_j]].x, goal_pose[(int)rbbuffer[id_j]].y);
+    if  (ROBOT_NUMBER > 1)
+    {
+    while(!initialized){
+            /* Wait until supervisor sent range and bearing information */
+            while (wb_receiver_get_queue_length(receiver) == 0) {
+                // printf("waiting for supervisor\n"); 
+                wb_robot_step(64); // Executing the simulation for 64ms
+                send_ping(); //send a ping to allow the other robot to initialize as well
+            }  
+            while (wb_receiver_get_queue_length(receiver) > 0) {
+                const double *message_direction;
+                double message_rssi;
+                rbbuffer = (char*) wb_receiver_get_data(receiver);
+                // printf("parsing buffer\n");
+                int id_j = (int)(rbbuffer[5]-'0');  // since the name of the sender is in the received message. Note: this does not work for robots having id bigger than 9!
+                initialized = 1;
+                message_direction = wb_receiver_get_emitter_direction(receiver);
+                message_rssi = wb_receiver_get_signal_strength(receiver);
+                goal_bearing = -atan2(message_direction[2], message_direction[0])-M_PI/2;
+                goal_range = sqrt((1/message_rssi));
+                goal_pose[id_j].x = goal_range * cos(goal_bearing);
+                goal_pose[id_j].y = goal_range * sin(goal_bearing);
+                goal_pose[id_j].heading = 0;
+                // printf("Goal of %d r.t. %d: e_x = %.2f, e_y = %.2f\n", *robot_id, id_j, goal_pose[(int)rbbuffer[id_j]].x, goal_pose[(int)rbbuffer[id_j]].y);
 
-            printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",*robot_id,id_j,goal_range,goal_bearing);
-			wb_receiver_next_packet(receiver);
-		}
-	}
+                printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",*robot_id,id_j,goal_range,goal_bearing);
+                wb_receiver_next_packet(receiver);
+            }
+        }
+    }
+    
+
+	
 
     printf("Robot %d initialized \n",*robot_id);
 }   
@@ -177,62 +193,126 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     
 }
 
-void local_avoidance_controller(pose_t *local, pose_t robot, pose_t control)
+void local_avoidance_controller(pose_t *local, pose_t robot)
 {
-    double gamma[8] = {-M_PI/12,-M_PI/4,-M_PI/2,-(5/6)*M_PI,M_PI/12,M_PI/4,M_PI/2,(5/6)*M_PI}; // IR sensor angles
+    double gamma[8] = {-M_PI/12,-M_PI/2,-3*M_PI/2,-(5/6)*M_PI,M_PI/12,M_PI/2,3*M_PI/2,(5/6)*M_PI}; // IR sensor angles
     double ox_a = 0, oy_a = 0, o_n, dot;
     double rel_angle = 0;
     for(int i = 0; i<8; i++){
         prox_value[i] = wb_distance_sensor_get_value(prox_address[i]);
         if(prox_value[i] < PROX_THRESHOLD)
             prox_value[i] = 0;
-        ox_a -= prox_value[i] * sin(gamma[i] + robot.heading);
-        oy_a -= prox_value[i] * cos(gamma[i] + robot.heading);
+        ox_a += prox_value[i] * cos(gamma[i] + robot.heading);
+        oy_a += prox_value[i] * sin(gamma[i] + robot.heading);
 
     }
+
+
+    double lx = 0, ly = 0;
+    double vx = robot.x - prev_pose.x;
+    double vy = robot.y - prev_pose.y;
+
+    for(int i  = 0; i<OBSTACLE_BUFFER_SIZE; i++){
+        if(obstacle_age[i] >= 0){
+            obstacle_age[i] += 1;
+            if(obstacle_age[i] >= MAX_OBSTACLE_AGE)
+                obstacle_age[i] = -1;
+
+            obstacle_buffer[i].x += vx;
+            obstacle_buffer[i].y += vy;
+
+            lx -= obstacle_buffer[i].x;
+            ly -= obstacle_buffer[i].y;
+
+        }
+        // printf("%f,", obstacle_age[i]);
+    }
+
+    // printf("\n");
+
     if(ox_a != 0 || oy_a != 0)
     {
-        // normalize the obstacle direction vector and rotate it 90deg
-        o_n = sqrt(ox_a*ox_a+oy_a*oy_a);
-        ox_a /= o_n;
-        oy_a /= o_n;
+        // only add obstacle if no other robot is close
+        int close = 0;  
+        for(int i = 0; i<ROBOT_NUMBER; i++)
+        {
+            if(range[i] < 0.01 && i != (int)(robot_name[5]-'0'))
+            {
+                if(fabs(bearing[i]- atan2(oy_a,ox_a)) < 3 )
+                    close = 1;
+                    // printf("close\n");
+            }
+            
+        }
+        for(int i = 0; i<OBSTACLE_BUFFER_SIZE; i++)
+        {
+            if(obstacle_age[i] != -1)
+            {
+                if( sqrt( (obstacle_buffer[i].x-ox_a)*(obstacle_buffer[i].x-ox_a) + (obstacle_buffer[i].y-oy_a) * (obstacle_buffer[i].y-oy_a) ) < 0.05 )
+                    close = 1;
+                    // printf("close\n");
+            }
+            
+        }
+        if(close == 0)
+        {
+            pose_t obstacle_position;
+            obstacle_position.x = robot.x + ox_a;
+            obstacle_position.y = robot.y + oy_a;
+            obstacle_position.heading = 0;
+            obstacle_buffer[obstacle_count] = obstacle_position;
+            obstacle_age[obstacle_count] = 0;
 
-        rel_angle = atan2(oy_a, ox_a) * 1.5;
+            obstacle_count += 1;
+            obstacle_count = obstacle_count%OBSTACLE_BUFFER_SIZE;
 
+            // printf("added obstacle %d \n", obstacle_count);
+        }
+        
         
     }
+
+    
     
 
-    ox = ox_a * obstacle_filter + ox * (1-obstacle_filter);
-    oy = oy_a * obstacle_filter + oy * (1-obstacle_filter);
+    // ox = -ox_a * obstacle_filter + ox * (1-obstacle_filter);
+    // oy = oy_a * obstacle_filter + oy * (1-obstacle_filter);
 
-    if(fabs(ox) > 0.0001 || fabs(oy) > 0.0001)
-    {
-         //project the vector on the obstacle normalized direction vector
+    // if(fabs(ox) > 0.0001 || fabs(oy) > 0.0001)
+    // {
+    //      //project the vector on the obstacle normalized direction vector
 
-        dot = ox * control.x + oy * control.y;
+    //     dot = ox * control.x + oy * control.y;
+    //     double norm = dot * sqrt(ox*ox+oy*oy);
+    //     printf("%f\n",norm);
 
-        //set the values
-        local->x = dot * ox*10;
-        local->y = dot * oy*10;
-        local->heading = control.heading;
-    }
-    else
-    {
-        // if the obstacle direction vector is 0, then just pass the control vector
-        local->x = control.x;
-        local->y = control.y;
-        local->heading = control.heading;
+    //     //set the values
+    //     local->x = -dot * ox/norm;
+    //     local->y =  dot * oy/norm;
+    //     local->heading = control.heading;
+    // }
+    // else
+    // {
+    //     // if the obstacle direction vector is 0, then just pass the control vector
+    //     local->x = control.x;
+    //     local->y = control.y;
+    //     local->heading = control.heading;
 
-    }
+    // }
+
+    // if the obstacle direction vector is 0, then just pass the control vector
+    local->x = lx;
+    local->y = ly;
+    local->heading = atan2(ly, lx);
 
 
-    printf("angle :%f, control: (%f, %f), local: (%f,%f) \n",rel_angle,control.x,control.y,local->x,local->y);
+    // printf("local: (%f,%f) \n",local->x,local->y);
 
     // double ph = atan2(py, px);
 
     // printf("%f, %f\n",px, py);
-
+    
+    prev_pose = robot;
     
 }
 
@@ -267,6 +347,7 @@ void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, do
 
 void unicylce_to_wheels(double *w_left, double *w_right, double u_omega, double u_v, double l, double threshold)
 {  
+    
     double normalize = 1;
     double left = u_v + (l/2) * u_omega;
     double right = u_v - (l/2) * u_omega;
@@ -281,6 +362,34 @@ void unicylce_to_wheels(double *w_left, double *w_right, double u_omega, double 
 }
 
 
-void get_hyperparameters_from_supervisor(int* robot_id){
+int get_hyperparameters_from_supervisor(double *hyperparameters)
+{
+
+    int updated = 0;
+    double *rbbuffer;
+
+    while (wb_receiver_get_queue_length(pso_receiver) == 0)
+    {
+        rbbuffer = (double*) wb_receiver_get_data(pso_receiver);
+        for(int i = 0; i < BUFFER_SIZE; i++)
+        {
+            hyperparameters[i] = rbbuffer[i];
+            printf("%f", hyperparameters[i]);
+        }
+        printf("\n");
+        wb_receiver_next_packet(pso_receiver);
+        updated = 1;
+    }
+
+    return updated;
+
     
 }
+
+	
+
+void init_pso_reciever()
+{
+    pso_receiver = wb_robot_get_device("receiver2");
+    wb_receiver_enable(pso_receiver,64);
+}    

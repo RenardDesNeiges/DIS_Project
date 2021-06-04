@@ -9,8 +9,8 @@ WorldInfo {
   coordinateSystem "NUE"
 }
 Viewpoint {
-  orientation 0.23224102258149526 0.8952520987133911 0.3802470081138972 4.14233936873668
-  position -4.818170565243098 3.9462935677157027 -2.0317897723930822
+  orientation 0.6777280960968939 0.5686725680467997 0.46615033853032584 4.523313229940166
+  position -2.1589846133826716 6.774421432433058 0.3255816244778252
   follow "epuck1"
 }
 PointLight {
@@ -133,6 +133,156 @@ DEF rock Solid {
   }
 }
 DEF rock Solid {
+  translation -0.230697 0 -0.813351
+  rotation 0 1 0 0.261804
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 1 1
+        }
+        texture ImageTexture {
+          url [
+            "textures/stone-2.png"
+          ]
+        }
+      }
+      geometry Box {
+        size 0.15 0.2 0.37
+      }
+    }
+  ]
+  name "short brick(4)"
+  boundingObject DEF U_END_BOX Box {
+    size 0.15 0.2 0.37
+  }
+}
+DEF rock Solid {
+  translation 0.26624 0 1.04122
+  rotation 0 1 0 0.261804
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 1 1
+        }
+        texture ImageTexture {
+          url [
+            "textures/stone-2.png"
+          ]
+        }
+      }
+      geometry Box {
+        size 0.15 0.2 0.37
+      }
+    }
+  ]
+  name "short brick(5)"
+  boundingObject DEF U_END_BOX Box {
+    size 0.15 0.2 0.37
+  }
+}
+DEF rock Solid {
+  translation -0.265819 0 0.284962
+  rotation 0 1 0 -0.523595307179586
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 1 1
+        }
+        texture ImageTexture {
+          url [
+            "textures/stone-2.png"
+          ]
+        }
+      }
+      geometry Box {
+        size 0.15 0.2 0.37
+      }
+    }
+  ]
+  name "short brick(6)"
+  boundingObject DEF U_END_BOX Box {
+    size 0.15 0.2 0.37
+  }
+}
+DEF rock Solid {
+  translation -2.02738 0 -1.04386
+  rotation 0 1 0 -0.523595307179586
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 1 1
+        }
+        texture ImageTexture {
+          url [
+            "textures/stone-2.png"
+          ]
+        }
+      }
+      geometry Box {
+        size 0.15 0.2 0.37
+      }
+    }
+  ]
+  name "short brick(7)"
+  boundingObject DEF U_END_BOX Box {
+    size 0.15 0.2 0.37
+  }
+}
+DEF rock Solid {
+  translation -0.945395 0 -0.85795
+  rotation 0 1 0 -0.523595307179586
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 1 1
+        }
+        texture ImageTexture {
+          url [
+            "textures/stone-2.png"
+          ]
+        }
+      }
+      geometry Box {
+        size 0.15 0.2 0.37
+      }
+    }
+  ]
+  name "short brick(8)"
+  boundingObject DEF U_END_BOX Box {
+    size 0.15 0.2 0.37
+  }
+}
+DEF rock Solid {
+  translation 0.483552 0 -0.0329572
+  rotation 0 1 0 -0.523595307179586
+  children [
+    Shape {
+      appearance Appearance {
+        material Material {
+          diffuseColor 1 1 1
+        }
+        texture ImageTexture {
+          url [
+            "textures/stone-2.png"
+          ]
+        }
+      }
+      geometry Box {
+        size 0.15 0.2 0.37
+      }
+    }
+  ]
+  name "short brick(9)"
+  boundingObject DEF U_END_BOX Box {
+    size 0.15 0.2 0.37
+  }
+}
+DEF rock Solid {
   translation -0.81537 0 0.500879
   rotation 0 1 0 -0.523595307179586
   children [
@@ -244,7 +394,7 @@ DEF long_rock_6 Solid {
 DEF SUPERVISOR Robot {
   children [
     Emitter {
-      channel 1
+      channel 2
     }
   ]
   name "supervisor"
@@ -254,6 +404,10 @@ DEF epuck0 Robot {
   translation -2.60212 -0.000174334 -0.0107098
   rotation 0.0005246968832588842 0.99999977750756 -0.00041191990835091414 -1.6058453071795862
   children [
+    Receiver {
+      name "receiver2"
+      channel 1
+    }
     GPS {
     }
     HingeJoint {
@@ -275,7 +429,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.02599999999999531 0.02 0
+        translation -0.025999999999994687 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -431,7 +585,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990923 0.02 0
+        translation 0.025999999999989674 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -1638,6 +1792,10 @@ DEF epuck1 Robot {
   translation -2.80482 -6.855e-05 0.158732
   rotation 0.0005246968832588842 0.99999977750756 -0.00041191990835091414 -1.6058453071795862
   children [
+    Receiver {
+      name "receiver2"
+      channel 1
+    }
     GPS {
     }
     HingeJoint {
@@ -1659,7 +1817,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999995346 0.02 0
+        translation -0.025999999999994722 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -1815,7 +1973,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990978 0.02 0
+        translation 0.02599999999998973 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -3022,6 +3180,10 @@ DEF epuck2 Robot {
   translation -2.79931 -0.000477856 -0.184846
   rotation 0.0005246968832588842 0.99999977750756 -0.00041191990835091414 -1.6058453071795862
   children [
+    Receiver {
+      name "receiver2"
+      channel 1
+    }
     GPS {
     }
     HingeJoint {
@@ -3043,7 +3205,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999995346 0.02 0
+        translation -0.025999999999994722 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -3199,7 +3361,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990978 0.02 0
+        translation 0.02599999999998973 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -4409,6 +4571,10 @@ DEF epuck3 Robot {
   translation -2.34203 -0.000446301 -0.00227383
   rotation 0.0005246968832588842 0.99999977750756 -0.00041191990835091414 -1.6058453071795862
   children [
+    Receiver {
+      name "receiver2"
+      channel 1
+    }
     GPS {
     }
     HingeJoint {
@@ -4430,7 +4596,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999995346 0.02 0
+        translation -0.025999999999994722 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -4586,7 +4752,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990957 0.02 0
+        translation 0.02599999999998971 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
