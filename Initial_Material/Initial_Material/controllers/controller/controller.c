@@ -177,29 +177,47 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     
 }
 
-void reynolds_controller(pose_t *reynold, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_RADIUS){
+void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_RADIUS, float relative_pos[ROBOT_NUMBER][3]){
+
+    const double *message_direction;
+    double message_rssi; // Received Signal Strength indicator
+    double bearing;
+    double range;
+    char *rbbuffer; // Buffer for the receiver node
+    int other_robot_id;
+
+    float prev_relative_pos[ROBOT_NUMBER][3]; // Previous relative  X, Z, Theta values
+    float relative_speed[ROBOT_NUMBER][2];    // Speeds calculated with Reynold's rules
+
+    int i, j, k;                    // Loop counters
+    float rel_avg_loc[2] = {0,0};   // Flock average positions
+    float rel_avg_speed[2] = {0,0}; // Flock average speeds
+    float cohesion[2] = {0,0};
+    float dispersion[2] = {0,0};
+    float consistency[2] = {0,0};
     
     send_ping();
 
     while (wb_receiver_get_queue_length(receiver) > 0) {
-        inbuffer = (char*) wb_receiver_get_data(receiver);
+
+        rbbuffer = (char*) wb_receiver_get_data(receiver);
         message_direction = wb_receiver_get_emitter_direction(receiver);
         message_rssi = wb_receiver_get_signal_strength(receiver);
+
         double y = message_direction[2];
         double x = message_direction[1];
 
-        theta = -atan2(y,x);
-        theta = theta + my_position[2]; // find the relative theta;
+        bearing = -atan2(y,x);
+        bearing = bearing + robot_pose[2]; // find the relative theta;
         range = sqrt((1/message_rssi));
 
-        other_robot_id = (int)(inbuffer[5]-'0');
-        
-        // Get position update
+        other_robot_id = (int)(rbbuffer[5]-'0');
+
         prev_relative_pos[other_robot_id][0] = relative_pos[other_robot_id][0];
         prev_relative_pos[other_robot_id][1] = relative_pos[other_robot_id][1];
 
-        relative_pos[other_robot_id][0] = range*cos(theta);  // relative x pos
-        relative_pos[other_robot_id][1] = -1.0 * range*sin(theta);   // relative y pos
+        relative_pos[other_robot_id][0] = range*cos(bearing);  // relative x pos
+        relative_pos[other_robot_id][1] = -1.0 * range*sin(bearing);   // relative y pos
 
         relative_speed[other_robot_id][0] = (1000/TIME_STEP)*(relative_pos[other_robot_id][0]-prev_relative_pos[other_robot_id][0]);
         relative_speed[other_robot_id][1] = (1000/TIME_STEP)*(relative_pos[other_robot_id][1]-prev_relative_pos[other_robot_id][1]);     
@@ -229,9 +247,11 @@ void reynolds_controller(pose_t *reynold, double w_cohesion, double w_dispersion
 
 
     //aggregation of all behaviors with relative influence determined by weights
-    reynold->x = w_dispersion * dispersion[0] + w_cohesion * cohesion[0] + w_consistency * consistency[0];
-    reynold->y = w_dispersion * dispersion[1] + w_cohesion * cohesion[1] + w_consistency * consistency[1];
-    reynold->heading = atan2(reynold.x,reynold.y);
+    double x = w_dispersion * dispersion[0] + w_cohesion * cohesion[0] + w_consistency * consistency[0];
+    double y = w_dispersion * dispersion[1] + w_cohesion * cohesion[1] + w_consistency * consistency[1];
+    reynold->x = x;
+    reynold->y = y;
+    reynold->heading = atan2(x,y);
 }
 
 void local_avoidance_controller(pose_t *local, pose_t robot, pose_t control)
