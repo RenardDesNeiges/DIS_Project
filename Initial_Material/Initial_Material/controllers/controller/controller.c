@@ -177,7 +177,7 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     
 }
 
-void reynolds_controller(pose_t *reynold, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_MAX){
+void reynolds_controller(pose_t *reynold, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_RADIUS){
     
     send_ping();
 
@@ -214,7 +214,7 @@ void reynolds_controller(pose_t *reynold, double w_cohesion, double w_dispersion
                 rel_avg_speed[j] += relative_speed[i][j]; //Compute averages over the whole flock without considering yourself
                 rel_avg_loc[j] += relative_pos[i][j];
                 }
-            if(pow(relative_pos[i][0],2)+pow(relative_pos[i][1],2) < RULE2_MAX){
+            if(pow(relative_pos[i][0],2)+pow(relative_pos[i][1],2) < RULE2_RADIUS){
                 for (j=0;j<2;j++) {
                     dispersion[j] -= 1/relative_pos[i][j]; // Rule 2 - Dispersion/Separation: keep far enough from flockmates
                 }
