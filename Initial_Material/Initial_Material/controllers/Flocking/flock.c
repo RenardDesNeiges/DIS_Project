@@ -116,7 +116,7 @@ void control_update()
 	
 	// printf("ox = %f, oy = %f \Nur ", obstacle_avoidance_vector.x, obstacle_avoidance_vector.y);
 
-	reynolds_controller(pose_t *reynold_vector, w_cohesion, w_dispersion, w_consistency, robot_id, RULE2_RADIUS)
+	reynolds_controller(&reynold_vector, w_cohesion, w_dispersion, w_consistency, robot_id, RULE2_RADIUS);
 
 	control_vector = pose_add(pose_scale(1,migration_vector), pose_scale(0.00,reynold_vector));
 	
