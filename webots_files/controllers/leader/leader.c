@@ -129,6 +129,9 @@ int main()
 				// 3. Control
 				control_update();
 
+
+				controller_print_log(wb_robot_get_time());
+
 			}
 		}
 	}

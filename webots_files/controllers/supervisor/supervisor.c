@@ -1,12 +1,10 @@
 /*****************************************************************************/
 /* File:         supervisor.c                             		             */
-/* Version:      2.0                                                         */
-/* Date:         10-Oct-14 -- 06-Oct-2015                                    */
-/* Description:  The supervisor of a flock of robots which takes care of     */
-/*				 sending the positions of the robots to the mates     	     */
-/*                                                                           */
-/* Author: 	 10-Oct-14 by Ali marjovi 									     */
-/*				 initially developed by Nicolas Correll  		  		     */
+/* Date:         2021	   	 			                                     */
+/* Description:  webots supervisor for consensus formation control that 	 */
+/*				 implements PSO for searching through the hyperparameters  	 */
+/*				 of the controller											 */
+/* Author: 	 Titouan Renard												     */
 /*****************************************************************************/
 
 
@@ -21,6 +19,7 @@
 
 #include "../pso/pso.h"
 #include "../communication/communication.h"
+#include "../controller/controller.h"
 
 #define ROBOT_NUMBER 4
 #define SIM_TIME 300
@@ -112,6 +111,20 @@ double compute_pos_error(int cnt, double* rel_goal_x,double* rel_goal_z){
 	return err;
 }
 
+double compute_terminal_error(){
+	int i;
+	double rx, rz, e_x, e_z;
+	double err = 0.0;
+	for (i=0;i<ROBOT_NUMBER;i++) {
+		rx = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[0];
+		rz = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[2];
+		e_x = rx-MIGRATION_X;
+		e_z = rz-MIGRATION_Y;
+		err += e_x*e_x + e_z*e_z; //apparently multiplicaitons are much faster than pow
+	}
+	return err;
+}
+
 void set_hyperparameters(float* hyperparamters)
 {
 	float buffer[BUFFER_SIZE];
@@ -140,7 +153,7 @@ void reset_simulation(float* hyperparamters)
 
 double run_simulation(print_enabled){;
 	int cnt;
-	double err = 0.0, avg_err = 0.0;
+	double err = 0.0, avg_err = 0.0, cost = 0.0;
 	double rel_goal_x[ROBOT_NUMBER], rel_goal_z[ROBOT_NUMBER];
 	for(cnt = 0; cnt < SIM_TIME; cnt++) { /* The robot never dies! */
 		/*compute the error at this time step*/
@@ -151,7 +164,10 @@ double run_simulation(print_enabled){;
 
 		wb_robot_step(64); /* run one step */
 	}
-	return avg_err;
+	printf("(%f,%f), ", avg_err/SIM_TIME, compute_terminal_error()/30);
+	cost = avg_err/SIM_TIME + compute_terminal_error()/30;
+
+	return cost;
 }
 
 int main(int argc, char *args[]) {
@@ -161,7 +177,7 @@ int main(int argc, char *args[]) {
 	reset_supervisor();
 
 	float hyperparameters[BUFFER_SIZE];
-	hyperparameters[ALPHA] = 0.005;
+	hyperparameters[ALPHA] = 100.0;
 	hyperparameters[BETA_L] = 0.0;
 	hyperparameters[BETA_F] = 1.0;
 	hyperparameters[THETA_L] = 1.0;
@@ -173,11 +189,12 @@ int main(int argc, char *args[]) {
 	hyperparameters[K_C] = 0.001;
 	hyperparameters[EPSILON_L] = 10.0;
 
-	for(int i = 1; i< 15; i++)
+	for(int i = 0; i< 15; i++)
 	{
+		printf("Run %d\n", i);
 		reset_simulation(hyperparameters);
-		cost = run_simulation(print_enabled)/SIM_TIME;
-		printf("cost = %f\n", cost);
+		cost = run_simulation(print_enabled);
+		printf("metric = %f\n", cost);
 	}
 	
 	return 0;

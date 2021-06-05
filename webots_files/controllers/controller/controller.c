@@ -213,7 +213,7 @@ void local_avoidance_controller(pose_t *local, pose_t robot)
     double vy = robot.y - prev_pose.y;
 
     for(int i  = 0; i<OBSTACLE_BUFFER_SIZE; i++){
-        if(obstacle_age[i] >= 0){
+        if(obstacle_age[i] > 0){
             obstacle_age[i] += 1;
             if(obstacle_age[i] >= MAX_OBSTACLE_AGE)
                 obstacle_age[i] = -1;

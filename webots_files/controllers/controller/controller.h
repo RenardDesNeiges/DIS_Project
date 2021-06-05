@@ -1,13 +1,22 @@
+/*****************************************************************************/
+/* File:         controller.h                             		             */
+/* Date:         2021	   	 			                                     */
+/* Description:  implements basic control behavior for formation and         */
+/*               flocking with e-puck 2 robots in webots                     */
+/* Author: 	 Titouan Renard												     */
+/*****************************************************************************/
+
+
 #ifndef CONTOLLER_H
 #define CONTOLLER_H
 
 #define OBSTACLE_BUFFER_SIZE 100
 #define MAX_OBSTACLE_AGE 100
 
-#define MIGRATION_X 0
-#define MIGRATION_Y -4
+#define MIGRATION_X 4
+#define MIGRATION_Y 0
 
-#define PSO
+//#define PSO
 
 #include <webots/robot.h>
 #include <webots/motor.h>
