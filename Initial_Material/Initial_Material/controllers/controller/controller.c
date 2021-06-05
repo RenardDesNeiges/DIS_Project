@@ -177,7 +177,7 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     
 }
 
-void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_RADIUS, float relative_pos[ROBOT_NUMBER][3]){
+void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_RADIUS, double **relative_pos){
 
     const double *message_direction;
     double message_rssi; // Received Signal Strength indicator
@@ -208,7 +208,7 @@ void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, 
         double x = message_direction[1];
 
         bearing = -atan2(y,x);
-        bearing = bearing + robot_pose[2]; // find the relative theta;
+        bearing = bearing + robot_pose.heading; // find the relative theta;
         range = sqrt((1/message_rssi));
 
         other_robot_id = (int)(rbbuffer[5]-'0');

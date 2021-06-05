@@ -52,6 +52,7 @@ double w_cohesion = 0.015;
 double w_dispersion = 0.002;
 double w_consistency = 0.1;
 double RULE2_RADIUS = 0.15;
+double relative_pos[ROBOT_NUMBER][3];
 double w[ROBOT_NUMBER] = {5, .5, .5, .5};
 int robot_id;
 pose_t goal_pose[ROBOT_NUMBER];		// control vector of the migratory urge
@@ -116,7 +117,7 @@ void control_update()
 	
 	// printf("ox = %f, oy = %f \Nur ", obstacle_avoidance_vector.x, obstacle_avoidance_vector.y);
 
-	reynolds_controller(&reynold_vector, w_cohesion, w_dispersion, w_consistency, robot_id, RULE2_RADIUS);
+	reynolds_controller(&reynold_vector, loc_get_pose(), w_cohesion, w_dispersion, w_consistency, robot_id, RULE2_RADIUS, relative_pos);
 
 	control_vector = pose_add(pose_scale(1,migration_vector), pose_scale(0.00,reynold_vector));
 	
