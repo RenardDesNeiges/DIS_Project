@@ -23,7 +23,7 @@
 #include "../communication/communication.h"
 
 #define ROBOT_NUMBER 4
-#define SIM_TIME 200
+#define SIM_TIME 300
 
 static WbNodeRef robs[ROBOT_NUMBER];
 static WbFieldRef robs_translation[ROBOT_NUMBER];
@@ -161,16 +161,16 @@ int main(int argc, char *args[]) {
 	reset_supervisor();
 
 	float hyperparameters[BUFFER_SIZE];
-	hyperparameters[ALPHA] = 0.0;
-	hyperparameters[BETA_L] = 1.0;
-	hyperparameters[BETA_F] = 2.0;
-	hyperparameters[THETA_L] = 3.0;
-	hyperparameters[THETA_F] = 4.0;
-	hyperparameters[LAMBDA] = 5.0;
-	hyperparameters[IOTA] = 6.0;
-	hyperparameters[K_A] = 7.0;
-	hyperparameters[K_B] = 8.0;
-	hyperparameters[K_C] = 9.0;
+	hyperparameters[ALPHA] = 0.005;
+	hyperparameters[BETA_L] = 0.0;
+	hyperparameters[BETA_F] = 1.0;
+	hyperparameters[THETA_L] = 1.0;
+	hyperparameters[THETA_F] = 0.0;
+	hyperparameters[LAMBDA] = 10.0;
+	hyperparameters[IOTA] = 0.005;
+	hyperparameters[K_A] = 100;
+	hyperparameters[K_B] = 50;
+	hyperparameters[K_C] = 0.001;
 	hyperparameters[EPSILON_L] = 10.0;
 
 	for(int i = 1; i< 15; i++)

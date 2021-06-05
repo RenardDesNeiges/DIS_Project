@@ -36,29 +36,39 @@ typedef struct
 
 
 //-----------------------------------------------------------------------------------//
-/*VARIABLES*/
-static simulation_t _robot;	
-pose_t migration_vector;	// control vector of the migratory urge
-pose_t obstacle_avoidance_vector;	// control vector of the migratory urge
-pose_t consensus_vector;			// control vector of the migratory urge
-pose_t migration_goal;		// goal of migratory urge
-pose_t control_vector;		// summed_up control vector
+
+/* webots variables */
+static simulation_t _robot;				// webots robot handler
+int robot_id;							// id of the robot in webots
+
+/* controller variables */
+
+pose_t migration_vector;				// control vector of the migratory urge
+pose_t obstacle_avoidance_vector;		// control vector of the obstacle avoidance
+pose_t consensus_vector;				// control vector of the consensus controller urge
+pose_t goal_pose[ROBOT_NUMBER];			// control poses of the consensus controller
+pose_t migration_goal;					// goal of migratory urge
+pose_t control_vector;					// summed_up control vector
+double u_omega, u_v;					// unicycle model control vector
+double w_left, w_right; 				// left and right wheel speeds
+
+/* hyperparameters and pso */
+
 double hyperparameters[BUFFER_SIZE];
-double u_omega, u_v;		// unicycle model control vector
-double w_left, w_right; 	// left and right wheel speeds
-double alpha = 100;
-double beta = 100;
-double theta = 100;
-double lambda = 100;
-double iota = 100;
-double ka = 100;
-double kb = 30;
-double kc = 0.001;
-double kp =30;
-double ki = 0.005;
-double w[ROBOT_NUMBER] = {5, .5, .5, .5};
-int robot_id;
-pose_t goal_pose[ROBOT_NUMBER];		// control vector of the migratory urge
+
+/* hyperparameters, in PSO those are set according to the hyperparameter buffer */
+
+
+double alpha = 0.005;					// obstacle avoidance weight
+double beta = 15.0;						// consensur weight
+double theta = 1.0;						// migration vector weight
+double lambda = 10.0;					// leader bias in consensus vector
+double iota = 0.1;						// integrator term weight in consensus
+double ka = 100;						// ka term of unicyle controller (see report for details)
+double kb = 50;							// kb term of unicyle controller (see report for details)
+double kc = 0.001;						// kc term of unicyle controller (see report for details)
+double kp = 1.0;						// proportional term of consensus (redundant with beta --> 1)
+double w[ROBOT_NUMBER]; 				// weight matrix collumn of consensus controller
 
 //---------------------------------------------------------------------------------------//
 //-----------------------------------------------------------------------------------//
@@ -68,7 +78,7 @@ static bool controller_init_time_step();
 static bool controller_init_motor();
 static void controller_print_log(double time);
 static bool controller_error(bool test, const char * message, int line, const char * fileName);
-
+void set_variables_to_hyperparameters();
 void control_update();
 
 
@@ -107,6 +117,7 @@ int main()
 			{
 				#ifdef PSO	
 				reset = get_hyperparameters_from_supervisor(hyperparameters); // getting a hyperparamater update resets the controller
+				set_variables_to_hyperparameters();
 				#endif // 
 				// 1. Perception / Measurement
 				loc_update_measures();
@@ -131,7 +142,7 @@ void set_variables_to_hyperparameters()
 	alpha = hyperparameters[ALPHA];
 	beta = hyperparameters[BETA_F];
 	theta = hyperparameters[THETA_F];
-	lambda = hyperparameters[LAMBDA];
+	lambda = hyperparameters[LAMBDA]; w[0] = lambda; //leader bias
 	iota = hyperparameters[IOTA];
 	ka = hyperparameters[K_A];
 	kb = hyperparameters[K_B];
@@ -145,13 +156,12 @@ void control_update()
 
 	migration_urge(&migration_vector, loc_get_pose(), migration_goal); 			// get the migration vector (stored in the migration_vector global variable)
 	
-	// printf("ox = %f, oy = %f \Nur ", obstacle_avoidance_vector.x, obstacle_avoidance_vector.y);
 
-	consensus_controller(&consensus_vector, loc_get_pose(), goal_pose, kp, ki, robot_id, w);
+	consensus_controller(&consensus_vector, loc_get_pose(), goal_pose, kp, iota, robot_id, w);
 	
 	local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
 
-	control_vector = pose_add_3(pose_scale(0.01,migration_vector), pose_scale(0.5,consensus_vector),pose_scale(0.0005, obstacle_avoidance_vector));  
+	control_vector = pose_add_3(pose_scale(theta,migration_vector), pose_scale(beta,consensus_vector),pose_scale(alpha, obstacle_avoidance_vector));
 
 
 	unicycle_controller(&u_omega, &u_v, loc_get_pose(), control_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)
@@ -174,6 +184,8 @@ bool controller_init()
 {
 
 	bool err = false;
+	for(int i = 0; i<ROBOT_NUMBER;i++)
+		w[i] = 1;
 	pose_t pose_origine = {-2.9,0.,0.};
 	memset(&_robot, 0 , sizeof(simulation_t));
 	CATCH(err,controller_init_time_step());

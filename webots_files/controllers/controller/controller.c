@@ -173,12 +173,12 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
             e_y = goal_pose[i].y - sin(global_bearing)*range[i];
 
 
-
             px -= w[i] * e_x;
             py -= w[i] * e_y;            
 
         }
     }
+
 
 
     cix += ki * px;
