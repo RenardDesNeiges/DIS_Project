@@ -21,7 +21,7 @@
 // #define TIME_INIT 5		        // Time in second
 #define TIME_INIT 1		        // Time in second
 #define WHEEL_RADIUS 20.5
-double wheel_speed_threshold = 6.275*0.5; //max value minus a small epsilon, lowered so that the followers can follow
+double wheel_speed_threshold = 6.275*0.87 ; //max value minus a small epsilon, lowered so that the followers can follow
 
 
 /*DEFINITIONS*/
@@ -40,6 +40,7 @@ typedef struct
 static simulation_t _robot;	
 pose_t migration_vector;	// control vector of the migratory urge
 pose_t obstacle_avoidance_vector;	// control vector of the migratory urge
+pose_t consensus_vector;			// control vector of the migratory urge
 pose_t migration_goal;		// goal of migratory urge
 pose_t control_vector;		// summed_up control vector
 double u_omega, u_v;		// unicycle model control vector
@@ -47,6 +48,11 @@ double w_left, w_right; 	// left and right wheel speeds
 double ka = 100;
 double kb = 30;
 double kc = 0.001;
+double kp =30;
+double ki = 0.5;
+double w[ROBOT_NUMBER] = {5, .5, .5, .5};
+int robot_id;
+pose_t goal_pose[ROBOT_NUMBER];		// control vector of the migratory urge
 //---------------------------------------------------------------------------------------//
 //-----------------------------------------------------------------------------------//
 /*FUNCTIONS*/
@@ -56,7 +62,7 @@ static bool controller_init_motor();
 static void controller_print_log(double time);
 static bool controller_error(bool test, const char * message, int line, const char * fileName);
 
-void leader_update();
+void control_update();
 
 
 
@@ -92,7 +98,7 @@ int main()
 			loc_compute_pose();
 			
 			// 3. Control
-			leader_update();
+			control_update();
 
 		}
 	}
@@ -101,16 +107,21 @@ int main()
 
 }
 
-void leader_update()  
+void control_update()  
 {
 	//main update function
 
 	migration_urge(&migration_vector, loc_get_pose(), migration_goal); 			// get the migration vector (stored in the migration_vector global variable)
-	local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
+	
 	// printf("ox = %f, oy = %f \Nur ", obstacle_avoidance_vector.x, obstacle_avoidance_vector.y);
-	control_vector = pose_add( pose_scale(0.005, obstacle_avoidance_vector), pose_scale(1,migration_vector));
 
-	unicycle_controller(&u_omega, &u_v, loc_get_pose(), control_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)
+	consensus_controller(&consensus_vector, loc_get_pose(), goal_pose, kp, ki, robot_id, w);
+
+	control_vector = pose_add(pose_scale(1,migration_vector), pose_scale(0.00,consensus_vector));
+	
+	local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose(), control_vector); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
+
+	unicycle_controller(&u_omega, &u_v, loc_get_pose(), obstacle_avoidance_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)
 	unicylce_to_wheels(&w_left, &w_right, u_omega, u_v,WHEEL_RADIUS,wheel_speed_threshold); 					// get the wheel speeds from the unicylce control law
 	wb_motor_set_velocity(_robot.left_motor, w_left);
 	wb_motor_set_velocity(_robot.right_motor, w_right);
@@ -135,6 +146,7 @@ bool controller_init()
 	CATCH(err,controller_init_time_step());
 	CATCH(err,loc_init(_robot.time_step, pose_origine));
 	CATCH(err,controller_init_motor());
+	init_range_bearing_estimates(&robot_id, goal_pose);
 	return err;
 }
 
