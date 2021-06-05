@@ -245,3 +245,14 @@ void lin_delay(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor, int init
    }
    
 }
+void turn_over_itself_delay(WbDeviceTag dev_left_motor, WbDeviceTag dev_right_motor, int init_time)
+{
+	double t = wb_robot_get_time();
+   t -= init_time;
+   if (t > 0.0) {
+     wb_motor_set_velocity(dev_left_motor, 6.28);
+     wb_motor_set_velocity(dev_right_motor, -6.28);
+   }
+
+}
+

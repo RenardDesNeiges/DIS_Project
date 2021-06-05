@@ -134,4 +134,4 @@ plot(data_true.Var1 , dif_x); hold on;
 plot(data_true.Var1 , dif_y); hold on;
 plot(data_true.Var1 , dif_h); hold on;
 legend('error about x', 'error about y','error about heading');
-xlabel('Time [s]'); ylabel('error squared [Rad] or [m]');
+xlabel('Time [s]'); ylabel('error squared [Rad] or [m');

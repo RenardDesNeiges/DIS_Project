@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #include "odometry.h"
-
+#include "rungekutta.h"
 //-----------------------------------------------------------------------------------//
 /*CONSTANTES*/
 #define WHEEL_AXIS 		0.057 		// Distance between the two wheels in meter
@@ -19,8 +19,10 @@
 static double _T;
 
 static double integrated_speedxr, integrated_speedyr;
+static double _integrated_speed;
 static pose_t _odo_pose_acc, _odo_speed_acc, _odo_pose_enc;
 //-----------------------------------------------------------------------------------//
+void speed(double z0[6], double t, double dz[6]);
 
 /**
  * @brief      Compute the odometry using the acceleration
@@ -32,9 +34,9 @@ static pose_t _odo_pose_acc, _odo_speed_acc, _odo_pose_enc;
 void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3], double Aleft_enc, double Aright_enc)
 {
 	
-	double acc_yr = acc[0]-acc_mean[0];
+	//double acc_yr = acc[0]-acc_mean[0];
 	double acc_xr = acc[1]-acc_mean[1];
-	
+	double z0[6], zf[6];
 	
 	//  Rad to meter : Convert the wheel encoders units into meters
 	Aright_enc  =WHEEL_RADIUS*Aright_enc;
@@ -42,7 +44,27 @@ void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3],
 	// Comupute omega using the wheel encoders
 	double omega = (Aright_enc-Aleft_enc)/WHEEL_AXIS/_T;
 	
-	double dxr, dyr, dthetar;
+	//fill the state and compute the next one using runge kutta 4
+	z0[0] = _odo_pose_acc.x;
+	z0[1] = _odo_pose_acc.y;
+	z0[2] = _odo_pose_acc.heading;
+	z0[3] = _integrated_speed;
+	z0[4] = omega;
+	z0[5] = acc_xr;
+	euler_methode(6, z0, 0, _T, speed, zf);
+	//unpack the state back to the pose format:
+	_odo_pose_acc.x = zf[0];
+	_odo_pose_acc.y = zf[1];
+	_odo_pose_acc.heading = zf[2];
+	_integrated_speed = zf[3];
+	memcpy(odo, &_odo_pose_acc, sizeof(pose_t));
+	if(VERBOSE_ODO_ACC)
+    {
+		//printf("rawacc[0]: %f, rawacc[1]: %f, rawacc[2]: %f \n",acc[0],acc[1],acc[2]);
+		printf("acc: %f\n", acc_xr);
+		//printf("ODO with acceleration : %g %g %g\n", odo->x , odo->y , RAD2DEG(odo->heading));
+    }
+	/*double dxr, dyr, dthetar;
 	double dspeedxr, dspeedyr;
 	double integrated_speedxnr, integrated_speedynr;
 	//compute the deltas in the robot frame
@@ -69,8 +91,8 @@ void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3],
 	_odo_pose_acc.heading += dthetar;
 	
 	//integrated speed in the old robot frame
-	integrated_speedxr += dspeedxr*cos(dthetar)-dspeedyr*sin(dthetar);
-	integrated_speedyr += dspeedxr*sin(dthetar)+dspeedyr*cos(dthetar);
+	integrated_speedxr +=dspeedxr*cos(dthetar)-dspeedyr*sin(dthetar);
+	integrated_speedyr +=dspeedxr*sin(dthetar)+dspeedyr*cos(dthetar);
 	
 	//integrated speed in the new robot frame
 	integrated_speedxnr = integrated_speedxr*cos(dthetar)-integrated_speedyr*sin(dthetar);
@@ -87,7 +109,31 @@ void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3],
 		printf("rawacc[0]: %f, rawacc[1]: %f, rawacc[2]: %f \n",acc[0],acc[1],acc[2]);
 		//printf("accx: %f, accy: %f\n", acc_wx,acc_wy);
 		//printf("ODO with acceleration : %g %g %g\n", odo->x , odo->y , RAD2DEG(odo->heading));
-    }	
+    }	*/
+    
+}
+
+/**
+ * @brief      	Compute the derivative of the state z, containing [x,y,heading,lin_vel,turning_rate, lin_acc]
+ *
+ * @param[in]  z0    	state (containing the pose and the parameters needed to compute its derivative)
+ * 						z0[0]: x
+ * 						z[1]: y
+ * 						z0[2]: heading
+ * 						z0[3]: linear velocity in the robot frame
+ * 						z0[4]:	turning rate of the robot
+ * 						z0[5]: linear acceleration in the robot frame
+ * @param[in]  t      	Time 
+ * @param[out] dz		Derivative of z0
+ */
+void speed(double z0[6], double t, double dz[6])
+{
+	dz[0] = cos(z0[2]+t*z0[4])*(z0[3]+t*z0[5]);
+	dz[1] = sin(z0[2]+t*z0[4])*(z0[3]+t*z0[5]);
+	dz[2] = z0[4];
+	dz[3] = z0[5];
+	dz[4] = 0;
+	dz[5] = 0;
 }
 
 /**
@@ -197,7 +243,6 @@ void odo_reset(int time_step)
 	memset(&_odo_speed_acc, 0 , sizeof(pose_t));
 
 	memset(&_odo_pose_enc, 0 , sizeof(pose_t));
-
 	_T = time_step / 1000.0;
 }
 
