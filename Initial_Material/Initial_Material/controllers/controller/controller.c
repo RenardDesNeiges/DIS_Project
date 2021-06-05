@@ -177,6 +177,63 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     
 }
 
+void reynolds_controller(pose_t *reynold, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_MAX){
+    
+    send_ping();
+
+    while (wb_receiver_get_queue_length(receiver) > 0) {
+        inbuffer = (char*) wb_receiver_get_data(receiver);
+        message_direction = wb_receiver_get_emitter_direction(receiver);
+        message_rssi = wb_receiver_get_signal_strength(receiver);
+        double y = message_direction[2];
+        double x = message_direction[1];
+
+        theta = -atan2(y,x);
+        theta = theta + my_position[2]; // find the relative theta;
+        range = sqrt((1/message_rssi));
+
+        other_robot_id = (int)(inbuffer[5]-'0');
+        
+        // Get position update
+        prev_relative_pos[other_robot_id][0] = relative_pos[other_robot_id][0];
+        prev_relative_pos[other_robot_id][1] = relative_pos[other_robot_id][1];
+
+        relative_pos[other_robot_id][0] = range*cos(theta);  // relative x pos
+        relative_pos[other_robot_id][1] = -1.0 * range*sin(theta);   // relative y pos
+
+        relative_speed[other_robot_id][0] = (1000/TIME_STEP)*(relative_pos[other_robot_id][0]-prev_relative_pos[other_robot_id][0]);
+        relative_speed[other_robot_id][1] = (1000/TIME_STEP)*(relative_pos[other_robot_id][1]-prev_relative_pos[other_robot_id][1]);     
+         
+        wb_receiver_next_packet(receiver);
+    }
+
+    
+    for(int i = 0; i<ROBOT_NUMBER; i++){
+        if(i!= robot_id){
+            for (j=0;j<2;j++){
+                rel_avg_speed[j] += relative_speed[i][j]; //Compute averages over the whole flock without considering yourself
+                rel_avg_loc[j] += relative_pos[i][j];
+                }
+            if(pow(relative_pos[i][0],2)+pow(relative_pos[i][1],2) < RULE2_MAX){
+                for (j=0;j<2;j++) {
+                    dispersion[j] -= 1/relative_pos[i][j]; // Rule 2 - Dispersion/Separation: keep far enough from flockmates
+                }
+            }
+        }
+    }
+
+    for (j=0;j<2;j++){
+        cohesion[j] = rel_avg_loc[j]/(ROBOT_NUMBER-1);      // Rule 1 - Aggregation/Cohesion: move towards the center of mass
+        consistency[j] = rel_avg_speed[j]/(ROBOT_NUMBER-1); // Rule 3 - Consistency/Alignment: match the speeds of flockmates
+    }
+
+
+    //aggregation of all behaviors with relative influence determined by weights
+    reynold->x = w_dispersion * dispersion[0] + w_cohesion * cohesion[0] + w_consistency * consistency[0];
+    reynold->y = w_dispersion * dispersion[1] + w_cohesion * cohesion[1] + w_consistency * consistency[1];
+    reynold->heading = atan2(reynold.x,reynold.y);
+}
+
 void local_avoidance_controller(pose_t *local, pose_t robot, pose_t control)
 {
     double gamma[8] = {-M_PI/12,-M_PI/4,-M_PI/2,-(5/6)*M_PI,M_PI/12,M_PI/4,M_PI/2,(5/6)*M_PI}; // IR sensor angles
