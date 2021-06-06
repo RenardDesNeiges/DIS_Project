@@ -35,7 +35,7 @@ static measurement_t 	_meas;
 static control_t 		_control;
 static pose_t        	_pose_gps, _pose_acc, _pose_enc, _pose_kalman;
 static pose_t        	_pose_origin = {-0.0, 0.0, 0.0};
-static double 			last_gps_time_s = -1.1f;
+static double 			last_gps_time_s = -1.2f;
 static int 				_time_step;
 static FILE *fp;
 
@@ -190,7 +190,11 @@ bool loc_init_encoder(int time_step)
 
   return err;
 }
-
+/**
+ * @brief 		Initialize the kalman matrices. Note that the static matrix Q0 
+ * 				is also initialized here.
+ * @return		return true if it fails
+ */
 bool loc_init_kalman(int ts)
 {
 	double state_0[N_STATES];
@@ -321,9 +325,9 @@ bool loc_init_kalman(int ts)
 		
 		//Init R
 		memset(R,0,sizeof(R));
-		R[F_ODOM][0][0] = 2*ts_s/1000.;
-		R[F_ODOM][1][1] = 2*ts_s/1000.;
-		R[F_ODOM][2][2] = 4*ts_s/1000.; //considering that each wheel is subjected to a random noise, then
+		R[F_ODOM][0][0] = 0.005*ts_s/1000.;
+		R[F_ODOM][1][1] = 0.005*ts_s/1000.;
+		R[F_ODOM][2][2] = 0.005*ts_s/1000.; //considering that each wheel is subjected to a random noise, then
 											 //sigma angular = sigma straight *2/WHEEL_AXIS
 		R[F_GPS][0][0] = 0.0001*ts_s/1000.;
 		R[F_GPS][1][1] = 0.0001*ts_s/1000.;
@@ -441,7 +445,7 @@ void loc_get_encoder()
     printf("ROBOT enc : %g %g\n", _meas.left_enc, _meas.right_enc);
 }
 /**
- * @brief      Read the acceleration values from the sensor
+ * @brief      Read the acceleration values from the sensors
  */
 void loc_get_acc()
 {
@@ -513,8 +517,8 @@ void loc_compute_pose()
 			{
 				if (VERBOSE_KALMAN)
 					printf("UPDATE GPS\n");
-				//loc_format_y(y_meas,F_GPS);
-				//kal_update_freq(F_GPS,y_meas);
+				loc_format_y(y_meas,F_GPS);
+				kal_update_freq(F_GPS,y_meas);
 			}
 			
 			//the retrurned pose will be the last one measured
@@ -540,7 +544,7 @@ void loc_compute_pose()
 	}
 }
 /**
- * @brief     Get the gps measurements for the position of the robot. Get the heading angle. Fill the pose structure. 
+ * @brief     Use the gps measurements to get the position of the robot. Get the heading angle. Fill the pose structure. 
  */
 void loc_get_gps_pose()
 {
@@ -571,7 +575,10 @@ double loc_get_heading()
 }
 
 //Kalman formating
-
+/**
+ * @brief 		Format the data used for input into a vector u
+ * @param[out]	u[N_CONTROL_INPUT] The control vector sent to the kalman filter
+ */
 bool loc_format_u(double u[N_CONTROL_INPUT]){
 	//compute the part caused by the control
 	if(MODE_KAL == ACC_CONTROLLED)
@@ -612,7 +619,11 @@ bool loc_format_u(double u[N_CONTROL_INPUT]){
 		
 	}
 }
-
+/**
+ * @brief		Format the data observed into a vector y
+ * @param[in] 	freq					The identifier of the measurement
+ * @param[out]	y_meas[N_OBSERVABLES]	The observation vector to input in the kalman filter
+ */
 void loc_format_y(double y_meas[N_OBSERVABLES], int freq)
 {
 	if(MODE_KAL == ACC_CONTROLLED)
@@ -642,7 +653,7 @@ void loc_format_y(double y_meas[N_OBSERVABLES], int freq)
 		{
 			y_meas[0] = _pose_gps.x;
 			y_meas[1] = _pose_gps.y;
-			y_meas[2] = _pose_gps.heading;			
+			y_meas[2] = 0;//_pose_gps.heading;			
 			//all other possible observables are set to 0 (note that they would have a K[i] 
 			//equal to 0 anyways)
 			for(int i = 3;i<N_OBSERVABLES;i++)
@@ -661,6 +672,10 @@ void loc_format_y(double y_meas[N_OBSERVABLES], int freq)
 	}
 
 }
+/**
+ * @brief		Format the state of the kalman filter to compute the pose of the robot
+ * 				The result is then stored in _pose_kalman
+ */
 void loc_format_kalman_pose()
 {
 	double x[N_STATES];
@@ -687,6 +702,10 @@ void loc_format_kalman_pose()
 }
 
 // Output functions
+/**
+ * @brief		Getter to output the pose
+ * @return		The pose computed using MODE_LOC
+ */
 pose_t loc_get_pose()
 {
 	switch(MODE_LOC)
@@ -704,6 +723,10 @@ pose_t loc_get_pose()
 	}
 }
 //LOG function
+/**
+ * @brief		Print the logs in DATANAME if LOGS is true (definied in localization.h)
+ * @param[in]	time		The current time of the simulation 
+ */
 void loc_print_log(double time)
 {
 	if(LOGS){

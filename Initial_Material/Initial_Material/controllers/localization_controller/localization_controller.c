@@ -18,7 +18,7 @@
 #define MAX_SPEED 1000          // Maximum speed 
 #define INC_SPEED 5             // Increment not expressed in webots 
 #define MAX_SPEED_WEB 6.28      // Maximum speed webots
-#define TIME_INIT 5		        // Time in second
+#define TIME_INIT 5	        // Time in second
 
 
 
@@ -73,7 +73,7 @@ int main()
 			
 			// Use one of the two trajectories.
 			//trajectory_2(_robot.left_motor, _robot.right_motor);
-			//    trajectory_2(dev_left_motor, dev_right_motor);
+			//trajectory_2(dev_left_motor, dev_right_motor);
 			trajectory_1_delay(_robot.left_motor, _robot.right_motor,TIME_INIT);
 			//circle_delay(_robot.left_motor, _robot.right_motor,TIME_INIT) ;
 			//turn_over_itself_delay(_robot.left_motor, _robot.right_motor,TIME_INIT) ;
