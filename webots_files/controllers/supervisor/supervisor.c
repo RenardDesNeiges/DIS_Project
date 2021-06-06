@@ -24,7 +24,7 @@
 #include "../controller/controller.h"
 
 #define ROBOT_NUMBER 4
-#define SIM_TIME 1200
+#define SIM_TIME 500
 
 /*CONSTANTES*/
 #define MAX_SPEED_WEB 6.28      // Maximum speed webots
@@ -168,7 +168,7 @@ double compute_vel_score(int cnt){
     /* Compute how fast we move */
     
     
-    double max_distance = MAX_SPEED_WEB*TIME_STEP/1000;
+    double max_distance = WHEEL_RADIUS*MAX_SPEED_WEB*TIME_STEP;
     
     /* move the average coords to the old one */
     if(cnt == 0){
@@ -241,32 +241,32 @@ void reset_simulation(float* hyperparamters)
 
 double run_simulation(bool print_enabled, const char* filename){;
 	int cnt;
-	double d_score =0.0, v_score = 0.0, err = 0.0, avg_err = 0.0, cost = 0.0;
+	double d_score =0.0, v_score = 0.0, score = 0.0, avg_score = 0.0, cost = 0.0;
 	double rel_goal_x[ROBOT_NUMBER], rel_goal_z[ROBOT_NUMBER];
 
 	for(cnt = 0; cnt < SIM_TIME; cnt++) { /* The robot never dies! */
-		/*compute the error at this time step*/
+		/*compute the score at this time step*/
 		sup_print_log();
 		d_score = compute_pos_score(cnt, rel_goal_x, rel_goal_z);
 		v_score = compute_vel_score(cnt);
-		err = d_score*v_score;
-		avg_err += err;
+		score = d_score*v_score;  // we want to MAXIMIZE this
+		avg_score += score;
 		if (print_enabled)
-                          printf("D_Score: %.2f, V_Score: %.2f, Error: %.2f, Average Error: %.2f\n", d_score, v_score, err, avg_err / cnt);
+                          printf("D_Score: %.2f, V_Score: %.2f, score: %.2f, Average score: %.2f\n", d_score, v_score, score, avg_score / cnt);
 
 		
 
 		wb_robot_step(64); /* run one step */
 	}
-	printf("(%f,%f), ", avg_err/SIM_TIME, compute_terminal_error()/30);
-	cost = avg_err/SIM_TIME + compute_terminal_error()/30;
+	printf("(%f,%f), ", avg_score/SIM_TIME, compute_terminal_error()/30);
+	cost = avg_score/SIM_TIME;
 
 	return cost;
 }
 
 int main(int argc, char *args[]) {
 	
-	int print_enabled = 0;
+	int print_enabled = 1;
 	double cost;
 	reset_supervisor();
 	char filename[11] = "trace_.csv";
