@@ -31,7 +31,45 @@ int robots;
 int nb;
 char label[50];
 char label2[20];
+void (*fitness)(double particles[ROBOTS][BUFFER_SIZE],double fit[ROBOTS],int neighbors[SWARMSIZE][SWARMSIZE]);
 
+
+
+// Generate random number in [0,1]
+double rnd(void) {
+  return ((double)rand())/((double)RAND_MAX);
+}
+
+// Find the modulus of an integer
+int mod(int num, int base) {
+  while (num >= base)
+    num -= base;
+  while (num < 0)      // Check for if number is negative to
+    num += base;
+  return num;
+}
+
+
+// S-function to transform v variable to [0,1]
+double s(double v) {
+  if (v > 5)
+    return 1.0;
+  else if (v < -5)
+    return 0.0;
+  else
+    return 1.0/(1.0 + exp(-1*v));
+}
+
+double bestResult(double lbest[swarmsize][datasize], double lbestperf[swarmsize], double best[datasize]);
+void updateNBPerf(double lbest[swarmsize][datasize], double lbestperf[swarmsize],
+		      double nbbest[swarmsize][datasize], double nbbestperf[swarmsize],
+		      int neighbors[swarmsize][swarmsize]);
+void updateLocalPerf(double swarm[swarmsize][datasize], double perf[swarmsize],
+     double lbest[swarmsize][datasize], double lbestperf[swarmsize], double lbestage[swarmsize]);
+void findPerformance(double swarm[swarmsize][datasize], double perf[swarmsize],
+		     double age[swarmsize], char type, int robots,
+		     int neighbors[swarmsize][swarmsize]);  
+void copyParticle(double particle1[datasize], double particle2[datasize]);		        
 /* Particle swarm optimization function                                      */
 /*                                                                           */
 /* Parameters:                                                               */
@@ -44,7 +82,11 @@ char label2[20];
 /* max:         maximum initial value of particle element                    */
 /* iterations:  number of iterations to run in the optimization              */
 /* n_datasize:  number of elements in particle                               */
-double* pso(int n_swarmsize, int n_nb, double lweight, double nbweight, double vmax, double min, double max, int iterations, int n_datasize, int n_robots) {
+double* pso(
+    void (*fn)(double particles[ROBOTS][BUFFER_SIZE],double fit[ROBOTS],int neighbors[SWARMSIZE][SWARMSIZE]),
+    int n_swarmsize, int n_nb, double lweight, double nbweight, double vmax, double min,
+    double max, int iterations, int n_datasize, int n_robots
+){
   double swarm[n_swarmsize][n_datasize];    // Swarm of particles
   double perf[n_swarmsize];                 // Current local performance of swarm
   double lbest[n_swarmsize][n_datasize];    // Current best local swarm
@@ -62,6 +104,7 @@ double* pso(int n_swarmsize, int n_nb, double lweight, double nbweight, double v
   datasize = n_datasize;
   robots = n_robots;
   nb = n_nb;
+  fitness = fn;
 
   sprintf(label, "Iteration: 0");
   wb_supervisor_set_label(0,label,0.01,0.01,0.1,0xffffff,0,FONT);
@@ -114,11 +157,13 @@ double* pso(int n_swarmsize, int n_nb, double lweight, double nbweight, double v
     for (i = 0; i < swarmsize; i++) {
       for (j = 0; j < datasize; j++) {
 
+        // Update velocities
+		v[i][j] *= 0.6;
+		v[i][j] += lweight*rnd()*(lbest[i][j] - swarm[i][j]) + nbweight*rnd()*(nbbest[i][j] - swarm[i][j]);
+        // Move particles
+		swarm[i][j] += v[i][j];
 
-        v[i][j] *= 0.6;
-        v[i][j] += lweight*rnd()*(lbest[i][j] - swarm[i][j]) + nbweight*rnd()*(nbbest[i][j] - swarm[i][j]);
-          
-        swarm[i][j] += v[i][j];
+
 
       }
     }
@@ -157,10 +202,6 @@ double* pso(int n_swarmsize, int n_nb, double lweight, double nbweight, double v
 }
 
 
-// Generate random number in [0,1]
-double rnd(void) {
-  return ((double)rand())/((double)RAND_MAX);
-}
 
 
 // Find the current performance of the swarm.
@@ -254,25 +295,7 @@ void updateNBPerf(double lbest[swarmsize][datasize], double lbestperf[swarmsize]
   }
 }
 
-// Find the modulus of an integer
-int mod(int num, int base) {
-  while (num >= base)
-    num -= base;
-  while (num < 0)      // Check for if number is negative to
-    num += base;
-  return num;
-}
 
-
-// S-function to transform v variable to [0,1]
-double s(double v) {
-  if (v > 5)
-    return 1.0;
-  else if (v < -5)
-    return 0.0;
-  else
-    return 1.0/(1.0 + exp(-1*v));
-}
 
 
 // Find the best result found, set best to the particle, and return the performance

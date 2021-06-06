@@ -66,7 +66,7 @@
 ###-----------------------------------------------------------------------------
 
 ### Do not modify: this includes Webots global Makefile.include
-C_SOURCES = follower.c ../localization_controller/kalman.c ../localization_controller/odometry.c ../localization_controller/localization.c localization_controller/linear_algebra.c ../controller/controller.c ../localization_controller/rungekutta.c
+C_SOURCES = follower.c ../localization_controller/kalman.c ../localization_controller/odometry.c ../localization_controller/rungekutta.c ../localization_controller/localization.c localization_controller/linear_algebra.c ../controller/controller.c
 null :=
 space := $(null) $(null)
 WEBOTS_HOME_PATH=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))

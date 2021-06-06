@@ -30,6 +30,33 @@
 #define TIME_STEP 64      // time step between measurement in milliseconds
 #define WHEEL_RADIUS 	0.0201		// Radius of the wheel in meter
 
+
+/* PSO definitions */
+#define BUFFER_SIZE 11
+#define SWARMSIZE 11                    // Number of particles in swarm (defined in pso.h)
+#define NB 1                            // Number of neighbors on each side
+#define LWEIGHT 2.0                     // Weight of attraction to personal best
+#define NBWEIGHT 2.0                    // Weight of attraction to neighborhood best
+#define VMAX 10.0                       // Maximum velocity particle can attain
+#define MIN_EXP_INIT -5.0                   // Lower bound on initialization value
+#define MAX_EXP_INIT 5.0                    // Upper bound on initialization value
+#define ITS 20                          // Number of iterations to run
+#define MAX_ROB 1                      // Maximum number of parallel devices
+
+/* Neighborhood types */
+#define STANDARD    -1
+#define RAND_NB      0
+#define NCLOSE_NB    1
+#define FIXEDRAD_NB  2
+
+/* Fitness definitions */
+#define FIT_ITS 180                     // Number of fitness steps to run during optimization
+
+#define FINALRUNS 1
+#define NEIGHBORHOOD STANDARD
+
+
+
 static WbNodeRef robs[ROBOT_NUMBER];
 static WbFieldRef robs_translation[ROBOT_NUMBER];
 static WbFieldRef robs_rotation[ROBOT_NUMBER];
@@ -212,14 +239,14 @@ double compute_terminal_error(){
 	return err;
 }
 
-void set_hyperparameters(float* hyperparamters)
+void set_hyperparameters(double* hyperparamters)
 {
-	float buffer[BUFFER_SIZE];
+	double buffer[BUFFER_SIZE];
 
 	for(int i = 0; i < BUFFER_SIZE; i++)
 		buffer[i] = hyperparamters[i];
 
-	wb_emitter_send(emitter_device,(float *)buffer,BUFFER_SIZE*sizeof(float));
+	wb_emitter_send(emitter_device,(double *)buffer,BUFFER_SIZE*sizeof(double));
 }
 
 void reset_positions()
@@ -232,25 +259,27 @@ void reset_positions()
 	}
 }
 
-void reset_simulation(float* hyperparamters)
+void reset_simulation(double* hyperparamters)
 {
 	reset_positions();
 	set_hyperparameters(hyperparamters);
 }
 
-double run_simulation(bool print_enabled, const char* filename){;
+
+double run_simulation(int logging_level){
 	int cnt;
 	double d_score =0.0, v_score = 0.0, score = 0.0, avg_score = 0.0, cost = 0.0;
 	double rel_goal_x[ROBOT_NUMBER], rel_goal_z[ROBOT_NUMBER];
 
 	for(cnt = 0; cnt < SIM_TIME; cnt++) { /* The robot never dies! */
 		/*compute the score at this time step*/
-		sup_print_log();
+		if(logging_level > 0)
+                            sup_print_log();
 		d_score = compute_pos_score(cnt, rel_goal_x, rel_goal_z);
 		v_score = compute_vel_score(cnt);
 		score = d_score*v_score;  // we want to MAXIMIZE this
 		avg_score += score;
-		if (print_enabled)
+		if (logging_level > 1)
                           printf("D_Score: %.2f, V_Score: %.2f, score: %.2f, Average score: %.2f\n", d_score, v_score, score, avg_score / cnt);
 
 		
@@ -263,43 +292,134 @@ double run_simulation(bool print_enabled, const char* filename){;
 	return cost;
 }
 
+
+
+
+void get_hyperparams(double def_hyperparameters[BUFFER_SIZE], double particles[MAX_ROB][BUFFER_SIZE]){
+           def_hyperparameters[ALPHA] = 100.0;
+	def_hyperparameters[BETA_L] = 0.0;
+	def_hyperparameters[BETA_F] = 1.0;
+	def_hyperparameters[THETA_L] = 1.0;
+	def_hyperparameters[THETA_F] = 0.0;
+	def_hyperparameters[LAMBDA] = 10.0;
+	def_hyperparameters[IOTA] = 0.0005;
+	def_hyperparameters[K_A] = 200;
+	def_hyperparameters[K_B] = 500;
+	def_hyperparameters[K_C] = 0.001;
+	def_hyperparameters[EPSILON_L] = 0.4;
+	
+	for (int j=0;j<BUFFER_SIZE;j++) {
+              def_hyperparameters[j] *= pow(2, particles[0][j]);  // scale the default value by 2^x where x in [-5, 5]
+          }
+}
+
+
+void get_hyperparams_from_weights(double def_hyperparameters[BUFFER_SIZE], double weights[BUFFER_SIZE]){
+           def_hyperparameters[ALPHA] = 100.0;
+	def_hyperparameters[BETA_L] = 0.0;
+	def_hyperparameters[BETA_F] = 1.0;
+	def_hyperparameters[THETA_L] = 1.0;
+	def_hyperparameters[THETA_F] = 0.0;
+	def_hyperparameters[LAMBDA] = 10.0;
+	def_hyperparameters[IOTA] = 0.0005;
+	def_hyperparameters[K_A] = 200;
+	def_hyperparameters[K_B] = 500;
+	def_hyperparameters[K_C] = 0.001;
+	def_hyperparameters[EPSILON_L] = 0.4;
+	
+	for (int j=0;j<BUFFER_SIZE;j++) {
+              def_hyperparameters[j] *= pow(2, weights[j]);  // scale the default value by 2^x where x in [-5, 5]
+          }
+}
+
+
+double calc_fitness(double particles[MAX_ROB][BUFFER_SIZE]){
+     double hyperparameters[BUFFER_SIZE];
+  get_hyperparams(hyperparameters, particles);  
+  reset_simulation(hyperparameters);
+  return run_simulation(0);
+
+}
+
+void fitness_fn(double particles[MAX_ROB][BUFFER_SIZE], double fit[MAX_ROB], int neighbors[SWARMSIZE][SWARMSIZE]){
+    fit[0] = calc_fitness(particles);
+}
+
+
 int main(int argc, char *args[]) {
 	
-	int print_enabled = 0;
-	double cost;
+
+
+	
+    printf("Particle Swarm Optimization Super Controller\n");
 	reset_supervisor();
-	char filename[11] = "trace_.csv";
-
-	float hyperparameters[BUFFER_SIZE];
-	hyperparameters[ALPHA] = 100.0;
-	hyperparameters[BETA_L] = 0.0;
-	hyperparameters[BETA_F] = 1.0;
-	hyperparameters[THETA_L] = 1.0;
-	hyperparameters[THETA_F] = 0.0;
-	hyperparameters[LAMBDA] = 10.0;
-	hyperparameters[IOTA] = 0.005;
-	hyperparameters[K_A] = 2;
-	hyperparameters[K_B] = 5;
-	hyperparameters[K_C] = 0.0001;
-	hyperparameters[EPSILON_L] = 0.5;
+    	
+    wb_robot_step(10*TIME_STEP); /* wait for the robots to initialize */
 	
-	for(int i = 0; i<10; i++)
-	{
-		wb_robot_step(64); /* wait 10 steps for the robots to initialize */
-	}
+    printf("Initialized\n");
+    
 
-	for(int i = 0; i< 15; i++)
-	{
+        double *weights;                         // Current params
+    double *best_weights;                    // Best params
+          double best_hyperparameters[BUFFER_SIZE]; 
+    int i,j;                               // Counter variables
+    
 
-		snprintf(filename, 11, "trace%d.csv", i);
-		sup_init_log(filename);
-		printf("Run %d\n", i);
-		reset_simulation(hyperparameters);
-		cost = run_simulation(print_enabled,filename);
-		printf("metric = %f\n", cost);
-		fclose(fp);
-	}
+  double fit, score;                        // Fitness of the current FINALRUN
+  double endfit;                     // Best fitness over 10 runs
+  double bestfit;
+  /* Evolve controllers */
+  endfit = 0.0;
+  bestfit = 0.0;
+
+  // Do 10 runs and send the best controller found to the robot
+  for (j=0;j<10;j++) {
+    // Get result of optimization
+    weights =  pso(fitness_fn, SWARMSIZE,NB,LWEIGHT,NBWEIGHT,VMAX,MAX_EXP_INIT,MIN_EXP_INIT,
+                        ITS,BUFFER_SIZE, MAX_ROB);
+
+    // Run FINALRUN tests and calculate average
+    
+    fit = 0.0;
+    for (i=0;i<FINALRUNS;i++) {
+    
+         get_hyperparams_from_weights(best_hyperparameters, weights);
+          reset_simulation(best_hyperparameters);
+          score = run_simulation(0);
+  
+        fit += score;
+    }
+    fit /= FINALRUNS;
+
+    // Check for new best fitness
+    if (fit > bestfit) {
+      bestfit = fit;
+      for (i = 0; i < BUFFER_SIZE; i++){
+	       best_weights[i] = weights[i];
+      }
+    }
+
+    printf("\n Performance of the best solution in iteration %d: %.3f\n", j, fit);
+    endfit += fit/10; // average over the 10 runs
+  }
+    
 	
+    printf("~~~~~~~~ Optimization finished.\n");
+  printf("Best performance: %.3f\n",bestfit);
+  printf("Average performance: %.3f\n",endfit);
+  
+  /* Run with best hyperaparameters*/
+  int logging_level = 1;
+  char filename[14] = "trace_best.csv";
+  // snprintf(filename, 11, "trace_best.csv");
+  
+  sup_init_log(filename);
+  
+   get_hyperparams_from_weights(best_hyperparameters, best_weights);
+  reset_simulation(best_hyperparameters);
+  score = run_simulation(logging_level);
+  fclose(fp);
+    
 	return 0;
 }
 

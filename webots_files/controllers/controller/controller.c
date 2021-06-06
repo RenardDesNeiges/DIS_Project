@@ -297,11 +297,11 @@ void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, do
         if(prox_value[i] < PROX_THRESHOLD)
             prox_value[i] = 0;
         angle += prox_value[i] * gamma[i];
-        printf("%f,",prox_value[i]);
+        // printf("%f,",prox_value[i]);
         if(prox_value[i] > 0.01) 
         {obs = 1;}
     } 
-    printf("\n");
+    // printf("\n");
 
     // printf("u = (%f,%f), a=%f\n", goal.x,goal.y, angle);
 
@@ -361,9 +361,6 @@ void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, do
             *omega = -angle;
             *v = 50; //lol
         // }
-
-        if(turn == -1) printf("r\n");
-        if(turn == 1) printf("l\n");
 
     }
 

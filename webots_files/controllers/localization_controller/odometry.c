@@ -22,14 +22,16 @@ static double integrated_speedxr, integrated_speedyr;
 static double _integrated_speed;
 static pose_t _odo_pose_acc, _odo_speed_acc, _odo_pose_enc;
 //-----------------------------------------------------------------------------------//
-void speed(double z0[6], double t, double dz[6]);
+static void compute_speed(double z0[6], double t, double dz[6]);
 
 /**
  * @brief      Compute the odometry using the acceleration
  *
- * @param      odo       The odometry
- * @param[in]  acc       The acceleration
- * @param[in]  acc_mean  The acc mean
+ * @param      odo       	The odometry
+ * @param[in]  acc       	The acceleration
+ * @param[in]  acc_mean  	The acc mean
+ * @param[in]  Aleft_enc 	The encoder of the left wheel (used to compute the heading)
+ * @param[in]  Aright_enc 	The encoder of the right wheel (used to compute the heading)
  */
 void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3], double Aleft_enc, double Aright_enc)
 {
@@ -51,7 +53,7 @@ void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3],
 	z0[3] = _integrated_speed;
 	z0[4] = omega;
 	z0[5] = acc_xr;
-	euler_methode(6, z0, 0, _T, speed, zf);
+	runge_kutta_4(6, z0, 0, _T, compute_speed, zf);
 	//unpack the state back to the pose format:
 	_odo_pose_acc.x = zf[0];
 	_odo_pose_acc.y = zf[1];
@@ -126,7 +128,7 @@ void odo_compute_acc(pose_t* odo, const double acc[3], const double acc_mean[3],
  * @param[in]  t      	Time 
  * @param[out] dz		Derivative of z0
  */
-void speed(double z0[6], double t, double dz[6])
+void compute_speed(double z0[6], double t, double dz[6])
 {
 	dz[0] = cos(z0[2]+t*z0[4])*(z0[3]+t*z0[5]);
 	dz[1] = sin(z0[2]+t*z0[4])*(z0[3]+t*z0[5]);
@@ -246,8 +248,13 @@ void odo_reset(int time_step)
 	_T = time_step / 1000.0;
 }
 
-
-
+//pose operations
+/**
+ * @brief		scale up a given pose
+ * @param[in]	c	scaling factor
+ * @param[in]	p	pose to scale
+ * @return 		c*p
+ */
 pose_t pose_scale(double c, pose_t p){
 	pose_t new_pose;
 	new_pose.x = c * p.x;
@@ -255,7 +262,12 @@ pose_t pose_scale(double c, pose_t p){
 	new_pose.heading = c * p.heading;
 	return new_pose;
 }
-
+/**
+ * @brief		add two poses together
+ * @param[in]	a	first input pose
+ * @param[in]	b	second input pose
+ * @return 		a+b
+ */
 pose_t pose_add(pose_t a, pose_t b){
 	pose_t new_pose;
 	new_pose.x = a.x + b.x;
@@ -263,7 +275,13 @@ pose_t pose_add(pose_t a, pose_t b){
 	new_pose.heading = a.heading + b.heading;
 	return new_pose;
 }
-
+/**
+ * @brief		add three poses together
+ * @param[in]	a	first input pose
+ * @param[in]	b	second input pose
+ * @param[in]	c	third input pose
+ * @return 		a+b+c
+ */
 pose_t pose_add_3(pose_t a, pose_t b, pose_t c){
 	pose_t new_pose;
 	new_pose.x = a.x + b.x + c.x;
