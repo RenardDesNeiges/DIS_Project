@@ -68,10 +68,10 @@ double kc = 0.001;						// kc term of unicyle controller (see report for details
 double kp = 1.0;						// proportional term of consensus (redundant with beta --> 1)
 double w[ROBOT_NUMBER]; 				// weight matrix collumn of consensus controller
 
-double w_cohesion = 0.015;
+double w_cohesion = 0.15;
 double w_dispersion = 0.002;
-double w_consistency = 0.1;
-double rule2radius = 0.15;
+double w_consistency = 0.2;
+double rule2radius = 0.1;
 
 
 //---------------------------------------------------------------------------------------//
