@@ -17,6 +17,11 @@
 #define K_C 9
 #define EPSILON_L 10
 
+#define FLOCK_COHESION 0
+#define FLOCK_DISPERSION 1
+#define FLOCK_CONSISTENCY 2
+#define FLOCK_RULE2_RADIUS 3
+
 // sends the emulated sensor readings from the supervisor to the robot
 void send_sensor_reading(WbDeviceTag emitter_device, int i, int j, float range, float bearing);
 
