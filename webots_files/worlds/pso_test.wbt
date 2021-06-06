@@ -80,10 +80,6 @@ DEF ground Solid {
   ]
   boundingObject USE ground_geo
 }
-BeerBottle {
-  translation -1.06 0 1.05
-  name "beer bottle(1)"
-}
 DEF rock Solid {
   translation -2.37039 0 0.571846
   rotation 0 1 0 -0.785395307179586
@@ -309,17 +305,6 @@ DEF rock Solid {
     size 0.15 0.2 0.37
   }
 }
-BeerBottle {
-  translation -1.2 0 1.23
-  name "beer bottle(2)"
-}
-BeerBottle {
-  translation -0.66 0 -0.5
-  name "beer bottle(3)"
-}
-BeerBottle {
-  translation -1.28 0 -1.27
-}
 DEF long_rock_3 Solid {
   translation -3 0 0
   rotation 0 1 0 1.5708
@@ -457,7 +442,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.02599999999999262 0.02 0
+        translation -0.025999999999992585 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -613,7 +598,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999985538 0.02 0
+        translation 0.02599999999998547 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -1845,7 +1830,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999992654 0.02 0
+        translation -0.02599999999999262 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -2001,7 +1986,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999985594 0.02 0
+        translation 0.025999999999985524 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -3233,7 +3218,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999992654 0.02 0
+        translation -0.02599999999999262 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -3389,7 +3374,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999985594 0.02 0
+        translation 0.025999999999985524 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -4624,7 +4609,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999992654 0.02 0
+        translation -0.02599999999999262 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -4780,7 +4765,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999985573 0.02 0
+        translation 0.025999999999985503 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {

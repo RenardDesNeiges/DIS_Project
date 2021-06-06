@@ -218,6 +218,16 @@ void kal_change_B(double new_B[N_STATES][N_CONTROL_INPUT])
 		for(int j = 0; j<N_CONTROL_INPUT;j++)
 			kalman.B[i][j] = new_B[i][j];
 }
+/** 
+ * @brief				Update the matrix Q in the model
+ * @param[in] new_Q		The new Q matrix
+ **/
+void kal_change_Q(double new_Q[N_STATES][N_STATES])
+{
+	for(int i=0;i<N_STATES;i++)
+		for(int j = 0; j<N_STATES;j++)
+			kalman.Q[i][j] = new_Q[i][j];
+}
 
 /**
  * @brief	Compute the prediction step of the kalman filter. The mode must be valid, and 
@@ -354,5 +364,9 @@ bool kal_error(bool test, const char * message, int line, const char * fileName)
   return false;
 }
 
-
-
+void kal_get_Q(double Q[N_STATES][N_STATES])
+{
+	for(int i =0; i<N_STATES;i++)
+		for(int j=0; j<N_STATES;j++)
+			Q[i][j] = kalman.Q[i][j];
+}

@@ -28,19 +28,19 @@
 
 
 void fun(double y0[3], double t, double dy[3]);
-int main(int argc, char **argv)
-{
-	double y0[3]={1,2,3}, yt[3];
-	double dt = 1;
-	double t = 0;
-	euler_methode(3,y0,t,dt,&fun,yt);
-	for(int i = 0;i<3;i++)
-		printf("euler: %f \n",yt[i]); 
-	runge_kutta_4(3,y0,t,dt,&fun,yt);
-	for(int i = 0;i<3;i++)
-		printf("runge: %f \n",yt[i]); 
-	return 0;
-}
+//~ int main(int argc, char **argv)
+//~ {
+	//~ double y0[3]={1,2,3}, yt[3];
+	//~ double dt = 1;
+	//~ double t = 0;
+	//~ euler_methode(3,y0,t,dt,&fun,yt);
+	//~ for(int i = 0;i<3;i++)
+		//~ printf("euler: %f \n",yt[i]); 
+	//~ runge_kutta_4(3,y0,t,dt,&fun,yt);
+	//~ for(int i = 0;i<3;i++)
+		//~ printf("runge: %f \n",yt[i]); 
+	//~ return 0;
+//~ }
 void fun(double y0[3], double t0, double dy[3])
 {
 	dy[0] = 1;

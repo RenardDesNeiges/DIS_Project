@@ -72,10 +72,11 @@ int main()
 			loc_compute_pose();
 			
 			// Use one of the two trajectories.
-			//trajectory_1(_robot.left_motor, _robot.right_motor);
+			//trajectory_2(_robot.left_motor, _robot.right_motor);
 			//    trajectory_2(dev_left_motor, dev_right_motor);
 			trajectory_1_delay(_robot.left_motor, _robot.right_motor,TIME_INIT);
 			//circle_delay(_robot.left_motor, _robot.right_motor,TIME_INIT) ;
+			//turn_over_itself_delay(_robot.left_motor, _robot.right_motor,TIME_INIT) ;
 			// Logging Step
 			controller_print_log(wb_robot_get_time());
 

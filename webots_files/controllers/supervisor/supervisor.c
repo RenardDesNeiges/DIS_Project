@@ -23,8 +23,7 @@
 #include "../communication/communication.h"
 #include "../controller/controller.h"
 
-#define ROBOT_NUMBER 4
-#define SIM_TIME 500
+#define SIM_TIME 1200
 
 /*CONSTANTES*/
 #define MAX_SPEED_WEB 6.28      // Maximum speed webots
@@ -37,7 +36,7 @@ static WbFieldRef robs_rotation[ROBOT_NUMBER];
 WbDeviceTag emitter_device;
 
 double start_angle[4] = {0.0,1.0,0.0,-1.570796};
-double start_pose[4][3] = {{-2.9,0,-0.05},{-2.9,0,0.11},{-2.9,0,-0.2},{-2.9,0,0.26}};
+double start_pose[5][3] = {{-2.9,0,-0.05},{-2.9,0,0.11},{-2.9,0,-0.2},{-2.9,0,0.26},{-2.9,0,0.32}};
 
 double loc[ROBOT_NUMBER][4];
 double avg_loc_team[4];
@@ -266,7 +265,7 @@ double run_simulation(bool print_enabled, const char* filename){;
 
 int main(int argc, char *args[]) {
 	
-	int print_enabled = 1;
+	int print_enabled = 0;
 	double cost;
 	reset_supervisor();
 	char filename[11] = "trace_.csv";
@@ -274,15 +273,15 @@ int main(int argc, char *args[]) {
 	float hyperparameters[BUFFER_SIZE];
 	hyperparameters[ALPHA] = 100.0;
 	hyperparameters[BETA_L] = 0.0;
-	hyperparameters[BETA_F] = 1.0;
+	hyperparameters[BETA_F] = 0.08;
 	hyperparameters[THETA_L] = 1.0;
 	hyperparameters[THETA_F] = 0.0;
-	hyperparameters[LAMBDA] = 10.0;
-	hyperparameters[IOTA] = 0.0005;
+	hyperparameters[LAMBDA] = 2.0;
+	hyperparameters[IOTA] = 0.0004;
 	hyperparameters[K_A] = 200;
 	hyperparameters[K_B] = 500;
 	hyperparameters[K_C] = 0.001;
-	hyperparameters[EPSILON_L] = 0.4;
+	hyperparameters[EPSILON_L] = 0.7;
 	
 	for(int i = 0; i<10; i++)
 	{

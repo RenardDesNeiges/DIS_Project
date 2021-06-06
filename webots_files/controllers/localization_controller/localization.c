@@ -39,6 +39,8 @@ static double 			last_gps_time_s = -1.1f;
 static int 				_time_step;
 static FILE *fp;
 
+static double Q0[N_STATES][N_STATES]; //original Q
+
 /* FUNCTIONS */
 static bool loc_init_encoder(int time_step);
 static bool loc_init_acc(int time_step);
@@ -55,8 +57,7 @@ static void loc_get_gps();
 
 static void loc_get_gps_pose();
 static double loc_get_heading();
-void loc_recompute_B(double B[N_STATES][N_CONTROL_INPUT],double theta);
-static void loc_format_u(double u[N_CONTROL_INPUT]);
+static bool loc_format_u(double u[N_CONTROL_INPUT]);
 static void loc_format_y(double y_meas[N_OBSERVABLES], int freq);
 static void loc_format_kalman_pose();
 
@@ -198,10 +199,9 @@ bool loc_init_kalman(int ts)
 	double B[N_STATES][N_CONTROL_INPUT];
 	double C[N_FREQ][N_OBSERVABLES][N_STATES];
 	double D[N_FREQ][N_OBSERVABLES][N_CONTROL_INPUT];
-	double Q[N_STATES][N_STATES];
 	double R[N_FREQ][N_OBSERVABLES][N_OBSERVABLES];
 	
-	double ts_mil = ts/1000.;
+	double ts_s = ts/1000.; //get the time step in seconds
 	
 	
 	if(MODE_KAL == ACC_CONTROLLED)
@@ -221,20 +221,20 @@ bool loc_init_kalman(int ts)
 		//Init A
 		memset(A,0,sizeof(A));
 		A[0][0] = 1;
-		A[0][2] = ts_mil;
+		A[0][2] = ts_s;
 		A[1][1] = 1;
-		A[1][3] = ts_mil;
+		A[1][3] = ts_s;
 		A[2][2] = 1;
 		A[3][3] = 1;
 		//Init B
-		B[0][0] = ts_mil*ts_mil/2;
+		B[0][0] = ts_s*ts_s/2;
 		B[0][1] = 0;
 		B[1][0] = 0;
-		B[1][1] = ts_mil*ts_mil/2;
-		B[2][0] = ts_mil;
+		B[1][1] = ts_s*ts_s/2;
+		B[2][0] = ts_s;
 		B[2][1] = 0;
 		B[3][0] = 0;
-		B[3][1] = ts_mil;
+		B[3][1] = ts_s;
 		
 		//Init C
 		memset(C,0,sizeof(C));
@@ -249,20 +249,20 @@ bool loc_init_kalman(int ts)
 		
 
 		//Init Q 
-		memset(Q,0,sizeof(Q));
-		Q[0][0] = 0.1*ts_mil/1000.;
-		Q[1][1] = 0.1*ts_mil/1000.;
-		Q[2][2] = 0.1*ts_mil/1000.;
-		Q[3][3] = 0.1*ts_mil/1000.;
+		memset(Q0,0,sizeof(Q0));
+		Q0[0][0] = 0.1*ts_s/1000.;
+		Q0[1][1] = 0.1*ts_s/1000.;
+		Q0[2][2] = 0.1*ts_s/1000.;
+		Q0[3][3] = 0.1*ts_s/1000.;
 
 		//Init R
 		memset(R,0,sizeof(R));
-		R[F_ODOM][0][0] = 0.05*ts_mil/1000.; //proportional to ts
-		R[F_ODOM][1][1] = 0.05*ts_mil/1000.;
+		R[F_ODOM][0][0] = 0.05*ts_s/1000.; //proportional to ts
+		R[F_ODOM][1][1] = 0.05*ts_s/1000.;
 		R[F_GPS][0][0] = 0.0001/1000.;		 //resolution of the GPS
 		R[F_GPS][1][1] = 0.0001/1000.;
 				   
-		kal_init_kalman(state_0,cov_0,A,B,Q,C,D,R);
+		kal_init_kalman(state_0,cov_0,A,B,Q0,C,D,R);
 	}
 	if(MODE_KAL == ACC_CONTROLLED_UPG)
 	{
@@ -281,22 +281,22 @@ bool loc_init_kalman(int ts)
 		//Init A
 		memset(A,0,sizeof(A));
 		A[0][0] = 1;
-		A[0][3] = ts_mil;
+		A[0][3] = ts_s;
 		A[1][1] = 1;
-		A[1][4] = ts_mil;
+		A[1][4] = ts_s;
 		A[2][2] = 1;
-		A[2][5] = ts_mil;
+		A[2][5] = ts_s;
 		A[3][3] = 1;
 		A[4][4] = 1;
-		A[5][5] = 1;
+		A[5][5] = 0; //the accelerometer directly show the angular speed (no accumulation)
 		
 		//Init B
 		memset(B,0,sizeof(B));
-		B[0][0] = ts_mil*ts_mil/2;
-		B[1][1] = ts_mil*ts_mil/2;
-		B[3][0] = ts_mil;
-		B[4][1] = ts_mil;
-		
+		B[0][0] = ts_s*ts_s/2;
+		B[3][0] = ts_s;
+		B[1][1] = ts_s*ts_s/2;
+		B[4][1] = ts_s;
+		B[5][2] = 1;
 		//Init C
 		memset(C,0,sizeof(C));
 		C[F_ODOM][0][3] = 1;
@@ -311,24 +311,24 @@ bool loc_init_kalman(int ts)
 		
 
 		//Init Q 
-		memset(Q,0,sizeof(Q));
-		Q[0][0] = 0.1*ts_mil/1000.;
-		Q[1][1] = 0.1*ts_mil/1000.;
-		Q[2][2] = 2*M_PI; //we actually don't have any information on theta for now
-		Q[3][3] = 0.1*ts_mil/1000.;
-		Q[4][4] = 0.1*ts_mil/1000.;
-		Q[5][5] = 2*M_PI; //we actually don't have any information on theta for now
+		memset(Q0,0,sizeof(Q0));
+		Q0[0][0] = ts_s/1000.;
+		Q0[1][1] = ts_s/1000.;
+		Q0[2][2] = ts_s/1000.;
+		Q0[3][3] = ts_s/1000.;
+		Q0[4][4] = ts_s/1000.;
+		Q0[5][5] = 100*ts_s/1000.; 
 		
 		//Init R
 		memset(R,0,sizeof(R));
-		R[F_ODOM][0][0] = 0.05*ts_mil/1000.;
-		R[F_ODOM][1][1] = 0.05*ts_mil/1000.;
-		R[F_ODOM][2][2] = 1.75*ts_mil/1000.; //considering that each wheel is subjected to a random noise, then
+		R[F_ODOM][0][0] = 2*ts_s/1000.;
+		R[F_ODOM][1][1] = 2*ts_s/1000.;
+		R[F_ODOM][2][2] = 4*ts_s/1000.; //considering that each wheel is subjected to a random noise, then
 											 //sigma angular = sigma straight *2/WHEEL_AXIS
-		R[F_GPS][0][0] = 0.0001*ts_mil/1000.;
-		R[F_GPS][1][1] = 0.0001*ts_mil/1000.;
+		R[F_GPS][0][0] = 0.0001*ts_s/1000.;
+		R[F_GPS][1][1] = 0.0001*ts_s/1000.;
 		R[F_GPS][2][2] = 1;					//needed for mathematical stability
-		kal_init_kalman(state_0,cov_0,A,B,Q,C,D,R);
+		kal_init_kalman(state_0,cov_0,A,B,Q0,C,D,R);
 	}
 	
 	return false;
@@ -483,7 +483,7 @@ void loc_compute_pose()
 {
 	double u[N_CONTROL_INPUT];
 	double y_meas[N_OBSERVABLES];
-	double B[N_STATES][N_CONTROL_INPUT];
+	bool q_change;
 	switch(MODE_LOC)
 	{
 		case ODOM:
@@ -511,10 +511,10 @@ void loc_compute_pose()
 			
 			if(fabs(last_gps_time_s-wb_robot_get_time())<TOL)
 			{
-				if(VERBOSE_KALMAN)
+				if (VERBOSE_KALMAN)
 					printf("UPDATE GPS\n");
-				loc_format_y(y_meas,F_GPS);
-				kal_update_freq(F_GPS,y_meas);
+				//loc_format_y(y_meas,F_GPS);
+				//kal_update_freq(F_GPS,y_meas);
 			}
 			
 			//the retrurned pose will be the last one measured
@@ -523,8 +523,15 @@ void loc_compute_pose()
 			//predict the future pose
 			if(MODE_KAL == ACC_CONTROLLED_UPG || MODE_KAL == ACC_CONTROLLED)
 			{
-				loc_format_u(u);
+				q_change = loc_format_u(u);
 				kal_predict(u);
+				if (q_change)
+				{
+					//reset Q after the update
+					kal_change_Q(Q0);
+				}
+					
+					
 			}
 			
 			break;
@@ -565,15 +572,44 @@ double loc_get_heading()
 
 //Kalman formating
 
-void loc_format_u(double u[N_CONTROL_INPUT]){
+bool loc_format_u(double u[N_CONTROL_INPUT]){
 	//compute the part caused by the control
-	if(MODE_KAL == ACC_CONTROLLED || MODE_KAL == ACC_CONTROLLED_UPG)
+	if(MODE_KAL == ACC_CONTROLLED)
 	{
 		//printf("heading: %f \n",_pose_acc.heading);
 		u[0]  =  cos(_pose_kalman.heading)*(_meas.acc[1]-_meas.acc_mean[1])
 				+sin(_pose_kalman.heading)*(_meas.acc[0]-_meas.acc_mean[0]);
 		u[1] = 	-sin(_pose_kalman.heading)*(_meas.acc[1]-_meas.acc_mean[1])
 				-cos(_pose_kalman.heading)*(_meas.acc[0]-_meas.acc_mean[0]);
+		return false;
+	}
+	if(MODE_KAL == ACC_CONTROLLED_UPG)
+	{
+		double x[N_STATES];
+		double acc_tangent = _meas.acc[1]-_meas.acc_mean[1];
+		double acc_centri = _meas.acc[0]-_meas.acc_mean[0];
+		double v_abs;
+		double ts_s = _time_step/1000.;
+		double Q[N_STATES][N_STATES];
+		kal_get_pose(x);
+		v_abs = sqrt(x[3]*x[3]+x[4]*x[4]);
+		u[0] = cos(x[2])*(acc_tangent)-sin(x[2])*v_abs*x[5];
+		u[1] = sin(x[2])*(acc_tangent)+cos(x[2])*v_abs*x[5];
+
+		if (fabs(v_abs + ts_s*acc_tangent) > 0.01) 
+		{
+			u[2] = -acc_centri/ (v_abs + ts_s*acc_tangent);
+			return false;
+		}
+		else
+		{
+			u[2] = -acc_centri/ (v_abs + 0.01); //a constant is added to stabilize the result
+			kal_get_Q(Q);
+			Q[5][5] = 1; //the variance is updated as the data is most likely not worth much
+			kal_change_Q(Q);
+			return true;
+		}
+		
 	}
 }
 
@@ -627,24 +663,27 @@ void loc_format_y(double y_meas[N_OBSERVABLES], int freq)
 }
 void loc_format_kalman_pose()
 {
+	double x[N_STATES];
+	kal_get_pose(x);
 	if(MODE_KAL	== ACC_CONTROLLED)
 	{
-		double x[N_STATES];
-		kal_get_pose(x);
 		_pose_kalman.x = x[0];
 		_pose_kalman.y = x[1];
 		_pose_kalman.heading=_pose_acc.heading;
 	}
 	if(MODE_KAL == ACC_CONTROLLED_UPG)
 	{
-		double x[N_STATES];
-		kal_get_pose(x);
 		_pose_kalman.x = x[0];
 		_pose_kalman.y = x[1];
 		_pose_kalman.heading=x[2];
 	}
 	if(VERBOSE_KALMAN)
+	{
 		printf("ROBOT pose : %g %g %g\n", _pose_kalman.x , _pose_kalman.y , RAD2DEG(_pose_kalman.heading));
+		for(int i = 0;i<N_STATES;i++)
+			printf("state %d is %g     ", i, x[i]);
+		printf("\n");
+	}
 }
 
 // Output functions
