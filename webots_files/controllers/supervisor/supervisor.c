@@ -22,7 +22,7 @@
 #include "../controller/controller.h"
 
 #define ROBOT_NUMBER 4
-#define SIM_TIME 300
+#define SIM_TIME 1200
 
 static WbNodeRef robs[ROBOT_NUMBER];
 static WbFieldRef robs_translation[ROBOT_NUMBER];
@@ -30,7 +30,7 @@ static WbFieldRef robs_rotation[ROBOT_NUMBER];
 WbDeviceTag emitter_device;
 
 double start_angle[4] = {0.0,1.0,0.0,-1.570796};
-double start_pose[4][3] = {{-2.60212,0,0},{-2.80212,0,0.16},{-2.80212,0,-0.16},{-2.34203,0,0.0}};
+double start_pose[4][3] = {{-2.9,0,-0.05},{-2.9,0,0.11},{-2.9,0,-0.2},{-2.9,0,0.26}};
 
 double loc[ROBOT_NUMBER][4];
 
@@ -182,12 +182,17 @@ int main(int argc, char *args[]) {
 	hyperparameters[BETA_F] = 1.0;
 	hyperparameters[THETA_L] = 1.0;
 	hyperparameters[THETA_F] = 0.0;
-	hyperparameters[LAMBDA] = 10.0;
-	hyperparameters[IOTA] = 0.005;
+	hyperparameters[LAMBDA] = 50.0;
+	hyperparameters[IOTA] = 0.0003;
 	hyperparameters[K_A] = 100;
-	hyperparameters[K_B] = 50;
+	hyperparameters[K_B] = 400;
 	hyperparameters[K_C] = 0.001;
-	hyperparameters[EPSILON_L] = 10.0;
+	hyperparameters[EPSILON_L] = 0.4;
+	
+	for(int i = 0; i<10; i++)
+	{
+		wb_robot_step(64); /* wait 10 steps for the robots to initialize */
+	}
 
 	for(int i = 0; i< 15; i++)
 	{

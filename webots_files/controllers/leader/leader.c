@@ -23,7 +23,7 @@
 // #define TIME_INIT 5		        // Time in second
 #define TIME_INIT 1		        // Time in second
 #define WHEEL_RADIUS 20.5
-double wheel_speed_threshold = 6.275*0.87 ; //max value minus a small epsilon, lowered so that the followers can follow
+double wheel_speed_threshold = WS_THRESH; //max value minus a small epsilon, lowered so that the followers can follow
 
 
 /*DEFINITIONS*/
@@ -63,7 +63,7 @@ double alpha = 0.005;					// obstacle avoidance weight
 double beta = 0.0;						// consensur weight
 double theta = 1.0;						// migration vector weight
 double lambda = 10.0;					// leader bias in consensus vector
-double iota = 0.1;						// integrator term weight in consensus
+double iota = 0.005;						// integrator term weight in consensus
 double ka = 100;						// ka term of unicyle controller (see report for details)
 double kb = 50;							// kb term of unicyle controller (see report for details)
 double kc = 0.001;						// kc term of unicyle controller (see report for details)
@@ -151,6 +151,7 @@ void set_variables_to_hyperparameters()
 	ka = hyperparameters[K_A];
 	kb = hyperparameters[K_B];
 	kc = hyperparameters[K_C];
+	wheel_speed_threshold = WS_THRESH * hyperparameters[EPSILON_L];
 }
 
 void control_update()  
@@ -163,17 +164,15 @@ void control_update()
 
 	consensus_controller(&consensus_vector, loc_get_pose(), goal_pose, kp, iota, robot_id, w);
 
-	local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
+	// local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
 
-	control_vector = pose_add_3(pose_scale(theta,migration_vector), pose_scale(beta,consensus_vector),pose_scale(alpha, obstacle_avoidance_vector));
+	control_vector = pose_add(pose_scale(theta,migration_vector), pose_scale(beta,consensus_vector));
 	
 
 	unicycle_controller(&u_omega, &u_v, loc_get_pose(), control_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)
 	unicylce_to_wheels(&w_left, &w_right, u_omega, u_v,WHEEL_RADIUS,wheel_speed_threshold); 					// get the wheel speeds from the unicylce control law
 	wb_motor_set_velocity(_robot.left_motor, w_left);
 	wb_motor_set_velocity(_robot.right_motor, w_right);
-
-	// printf("x = %f, y = %f, heading =  %f \n", loc_get_pose().x, loc_get_pose().y, loc_get_pose().heading);
 
 }
 

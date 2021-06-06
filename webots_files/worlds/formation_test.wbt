@@ -10,8 +10,9 @@ WorldInfo {
 }
 Viewpoint {
   orientation 0.23224102258149526 0.8952520987133911 0.3802470081138972 4.14233936873668
-  position -4.818170565243098 3.9462935677157027 -2.0317897723930822
+  position -4.893526595015779 4.034083569438079 -2.0704674294137666
   follow "epuck1"
+  followType "None"
 }
 PointLight {
   intensity 0.5
@@ -29,6 +30,7 @@ Background {
 }
 DEF ground Solid {
   translation -1.37157 0 0.0154431
+  scale 10 10 10
   children [
     Shape {
       appearance Appearance {
@@ -77,96 +79,6 @@ DEF ground Solid {
     }
   ]
   boundingObject USE ground_geo
-}
-BeerBottle {
-  translation -1.06 0 0
-  name "beer bottle(1)"
-}
-DEF rock Solid {
-  translation -2.02537 0 0.0908839
-  rotation 0 1 0 0.523603
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 1 1 1
-        }
-        texture ImageTexture {
-          url [
-            "textures/stone-2.png"
-          ]
-        }
-      }
-      geometry Box {
-        size 0.15 0.2 0.37
-      }
-    }
-  ]
-  name "short brick(1)"
-  boundingObject DEF U_END_BOX Box {
-    size 0.15 0.2 0.37
-  }
-}
-DEF rock Solid {
-  translation -1.51537 0 -0.469118
-  rotation 0 1 0 0.261804
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 1 1 1
-        }
-        texture ImageTexture {
-          url [
-            "textures/stone-2.png"
-          ]
-        }
-      }
-      geometry Box {
-        size 0.15 0.2 0.37
-      }
-    }
-  ]
-  name "short brick(2)"
-  boundingObject DEF U_END_BOX Box {
-    size 0.15 0.2 0.37
-  }
-}
-DEF rock Solid {
-  translation -0.81537 0 0.500879
-  rotation 0 1 0 -0.523595307179586
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 1 1 1
-        }
-        texture ImageTexture {
-          url [
-            "textures/stone-2.png"
-          ]
-        }
-      }
-      geometry Box {
-        size 0.15 0.2 0.37
-      }
-    }
-  ]
-  name "short brick(3)"
-  boundingObject DEF U_END_BOX Box {
-    size 0.15 0.2 0.37
-  }
-}
-BeerBottle {
-  translation -1.2 0 0.6
-  name "beer bottle(2)"
-}
-BeerBottle {
-  translation -0.66 0 -0.5
-  name "beer bottle(3)"
-}
-BeerBottle {
-  translation -1.28 0 -0.51
 }
 DEF long_rock_3 Solid {
   translation -3 0 0
@@ -275,7 +187,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.02599999999999531 0.02 0
+        translation -0.025999999999995263 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -431,7 +343,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990923 0.02 0
+        translation 0.025999999999990826 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -1659,7 +1571,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999995346 0.02 0
+        translation -0.025999999999995298 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -1815,7 +1727,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990978 0.02 0
+        translation 0.02599999999999088 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -3043,7 +2955,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999995346 0.02 0
+        translation -0.025999999999995298 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -3199,7 +3111,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990978 0.02 0
+        translation 0.02599999999999088 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -4430,7 +4342,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999995346 0.02 0
+        translation -0.025999999999995298 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -4586,7 +4498,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999990957 0.02 0
+        translation 0.02599999999999086 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {

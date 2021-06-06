@@ -17,6 +17,7 @@
 
 #define TIME_STEP 64
 #define PROX_THRESHOLD 120
+#define THRESH_TURN 1.2
 
 double range[ROBOT_NUMBER];
 double bearing[ROBOT_NUMBER];
@@ -29,6 +30,7 @@ WbDeviceTag emitter;          	// Handle for the emitter node for range and bear
 
 double cix = 0, ciy = 0, cih = 0; // integral terms of the concensus controller
 double ox = 0, oy = 0, obstacle_filter = 0.2;
+double turn = 1;
 
 pose_t obstacle_buffer[OBSTACLE_BUFFER_SIZE];
 double obstacle_age[OBSTACLE_BUFFER_SIZE];
@@ -74,6 +76,7 @@ void send_ping(void) {
 void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
 {
 
+    double e_x,e_y;
     double goal_range, goal_bearing;
     char *rbbuffer;
 
@@ -113,19 +116,22 @@ void init_range_bearing_estimates(int* robot_id, pose_t* goal_pose)
                 // printf("parsing buffer\n");
                 int id_j = (int)(rbbuffer[5]-'0');  // since the name of the sender is in the received message. Note: this does not work for robots having id bigger than 9!
                 initialized = 1;
-                message_direction = wb_receiver_get_emitter_direction(receiver);
-                message_rssi = wb_receiver_get_signal_strength(receiver);
-                goal_bearing = -atan2(message_direction[2], message_direction[0])-M_PI/2;
-                goal_range = sqrt((1/message_rssi));
-                goal_pose[id_j].x = goal_range * cos(goal_bearing);
-                goal_pose[id_j].y = goal_range * sin(goal_bearing);
-                goal_pose[id_j].heading = 0;
-                // printf("Goal of %d r.t. %d: e_x = %.2f, e_y = %.2f\n", *robot_id, id_j, goal_pose[(int)rbbuffer[id_j]].x, goal_pose[(int)rbbuffer[id_j]].y);
-
-                printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",*robot_id,id_j,goal_range,goal_bearing);
                 wb_receiver_next_packet(receiver);
             }
         }
+    }
+
+    for(int i = 0; i<ROBOT_NUMBER; i++)
+    {
+        e_x = ref_poses[i].x - ref_poses[*robot_id].x;
+        e_y = ref_poses[i].x - ref_poses[*robot_id].y;
+        goal_bearing = atan2(e_y, e_x);
+        goal_range = sqrt(e_x*e_x+e_y*e_y);
+        goal_pose[i].x = goal_range * cos(goal_bearing);
+        goal_pose[i].y = goal_range * sin(goal_bearing);
+        goal_pose[i].heading = 0;
+
+        printf("ID_I : %d, ID_J : %d, RANGE %f, BEARING %f\n",*robot_id,i,goal_range,goal_bearing);
     }
     
 
@@ -318,29 +324,79 @@ void local_avoidance_controller(pose_t *local, pose_t robot)
 
 void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, double ka, double kb, double kc)
 {   
+    /* get the local obstacle avoidance sensors */
 
-    double beta = atan2(goal.y, goal.x);
-    double alpha = robot.heading - beta;
-    double theta =  robot.heading - goal.heading;
-    double e = pow( pow(goal.x,2) + pow(goal.y,2), 0.5);
-    // printf("%f %f,%f \n", e, beta, alpha);
-    if(fabs(e) < 0.006) //avoids oscillations
-        e = 0;
-    if(fabs(alpha) < 0.1) //avoids oscillations
-        alpha = 0;
-    *v = (ka * cos(alpha)) * e;
+    double weights[8] = {1,1,1,0,1,1,1,0}; // IR sensor angles
+    double gamma[8] = {-M_PI/12,-M_PI/2,-3*M_PI/2,-(5/6)*M_PI,M_PI/12,M_PI/2,3*M_PI/2,(5/6)*M_PI}; // IR sensor angles
+    double ox = 0, oy = 0, o_n, dot, angle;
+    double rel_angle = 0;
+    for(int i = 0; i<8; i++){
+        prox_value[i] = wb_distance_sensor_get_value(prox_address[i]);
+        if(prox_value[i] < PROX_THRESHOLD)
+            prox_value[i] = 0;
+        ox += prox_value[i] * cos(gamma[i] + robot.heading) * weights[i];
+        oy += prox_value[i] * sin(gamma[i] + robot.heading) * weights[i];
+    } 
+    angle = atan2(oy,ox);
 
-    if(e == 0) //if we are close to the destination, the alpha value looses meaning so we just account for theta (to prevent oscillation caused by the fact that the controller is discrete)
+    /* if we have no sensor readings run a simple unicycle-like controller */
+    if( (ox == 0 && oy == 0) || (fabs(angle-atan2(goal.y, goal.x))) >= M_PI )
     {
-         *omega =  ka * kc * theta;
-    }
+        double beta = atan2(goal.y, goal.x);
+        double alpha = robot.heading - beta;
+        double theta =  robot.heading - goal.heading;
+        double e = pow( pow(goal.x,2) + pow(goal.y,2), 0.5);
+
+        if(fabs(e) < 0.006) //avoids oscillations
+            e = 0;
+        if(fabs(alpha) < 0.1) //avoids oscillations
+            alpha = 0;
+        *v = (ka * cos(alpha)) * e; //sets the unicycle speed
+        if(fabs(alpha) > M_PI_2) //we don't want to move backwards
+        {
+            *omega = alpha;
+        }
+        else
+        {
+            if(e == 0) //if we are close to the destination, the alpha value looses meaning so we just account for theta (to prevent oscillation caused by the fact that the controller is discrete)
+            {
+                    *omega =  ka * kc * theta; //sets the unicycle angular speed
+            }
+            else
+            {
+            if(alpha != 0) //sets the unicycle angular speed
+                *omega = kb * alpha + ka * (cos(alpha)*sin(alpha))/alpha * (alpha + kc * theta);
+            else // when alpha tends to zero the cos*sin/alpha term tends to 1, but c doesn't know that ...
+                *omega = kb * alpha + ka * (alpha + kc * theta);
+        }
+        
+        }
+    }    /* else run simple wall following controller */
     else
     {
-    if(alpha != 0)
-        *omega = kb * alpha + ka * (cos(alpha)*sin(alpha))/alpha * (alpha + kc * theta);
-    else // when alpha tends to zero the cos*sin/alpha term tends to 1, but c doesn't know that ...
-        *omega = kb * alpha + ka * (alpha + kc * theta);
+
+        
+        if(angle-robot.heading < THRESH_TURN)
+            turn = -1;
+        if(angle-robot.heading > THRESH_TURN)
+            turn = 1;
+
+        // if( fabs(angle-robot.heading) < 1)
+        // {
+        //     //just rotate
+        //     *omega = robot.heading - angle + M_PI/2*turn + 0.2*turn;
+        //     *v = 0;
+        // }
+        // else{
+            //rotate and advance
+            //*omega = something
+            *omega = robot.heading - angle + M_PI/2*turn +0.2*turn;
+            *v = 10*sin(fabs(robot.heading - angle)); //lol
+        // }
+
     }
+
+    
     // printf("e = %f, alpha = %f, v = %f, omega = %f \n", e, alpha, *v, *omega);
     // printf("theta = %f, omega = %f \n",theta, *omega);
 }
