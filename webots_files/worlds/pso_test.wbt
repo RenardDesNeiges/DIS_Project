@@ -457,7 +457,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.0259999999999928 0.02 0
+        translation -0.02599999999999262 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -613,7 +613,7 @@ DEF epuck0 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.0259999999999859 0.02 0
+        translation 0.025999999999985538 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -1845,7 +1845,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999992834 0.02 0
+        translation -0.025999999999992654 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -2001,7 +2001,7 @@ DEF epuck1 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999985954 0.02 0
+        translation 0.025999999999985594 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -3233,7 +3233,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999992834 0.02 0
+        translation -0.025999999999992654 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -3389,7 +3389,7 @@ DEF epuck2 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999985954 0.02 0
+        translation 0.025999999999985594 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {
@@ -4624,7 +4624,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_LEFT_WHEEL Solid {
-        translation -0.025999999999992834 0.02 0
+        translation -0.025999999999992654 0.02 0
         rotation 1 0 0 4.641422839210032
         children [
           DEF EPUCK_WHEEL Transform {
@@ -4780,7 +4780,7 @@ DEF epuck3 Robot {
         }
       ]
       endPoint DEF EPUCK_RIGHT_WHEEL Solid {
-        translation 0.025999999999985934 0.02 0
+        translation 0.025999999999985573 0.02 0
         rotation -1 0 0 3.3650968510637425
         children [
           Transform {

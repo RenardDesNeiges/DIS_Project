@@ -12,6 +12,8 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+
 
 #include <webots/robot.h>
 #include <webots/emitter.h>
@@ -33,6 +35,8 @@ double start_angle[4] = {0.0,1.0,0.0,-1.570796};
 double start_pose[4][3] = {{-2.9,0,-0.05},{-2.9,0,0.11},{-2.9,0,-0.2},{-2.9,0,0.26}};
 
 double loc[ROBOT_NUMBER][4];
+
+FILE *fp;
 
 /* Good relative positions for each robot */
 double good_rp[ROBOT_NUMBER][2] = { {0.0,0.0}, {0.0,-0.30}};
@@ -58,6 +62,45 @@ void reset_supervisor(void) {
 		rob[5]++;
 	}
 	emitter_device = wb_robot_get_device("emitter");
+
+}
+
+bool sup_init_log(const char* filename)
+{
+
+  fp = fopen(filename,"w");
+  bool err = (fp == NULL);
+
+  if( !err )
+  {
+	for(int i = 0; i< ROBOT_NUMBER; i++)
+	{
+		fprintf(fp, "x%d,y%d,",i,i);
+	}
+    fprintf(fp,"\n");
+  }
+  else
+  {
+	  printf("Fails to create a log file\n");
+  }
+
+  return err;
+}
+
+void sup_print_log()
+{	
+	double x,y;
+	
+	if( fp != NULL)
+	{
+		for(int i = 0; i<ROBOT_NUMBER;i++)
+		{
+			x = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[0];
+			y = wb_supervisor_field_get_sf_vec3f(robs_translation[i])[2];
+			fprintf(fp, "%f,%f,",x,y);
+		}
+	    fprintf(fp,"\n");
+	}
 
 }
 
@@ -151,12 +194,14 @@ void reset_simulation(float* hyperparamters)
 	set_hyperparameters(hyperparamters);
 }
 
-double run_simulation(print_enabled){;
+double run_simulation(bool print_enabled, const char* filename){;
 	int cnt;
 	double err = 0.0, avg_err = 0.0, cost = 0.0;
 	double rel_goal_x[ROBOT_NUMBER], rel_goal_z[ROBOT_NUMBER];
+
 	for(cnt = 0; cnt < SIM_TIME; cnt++) { /* The robot never dies! */
 		/*compute the error at this time step*/
+		sup_print_log();
 		err = compute_pos_error(cnt, rel_goal_x, rel_goal_z);
 		avg_err += err;
 		if (print_enabled)
@@ -175,6 +220,7 @@ int main(int argc, char *args[]) {
 	int print_enabled = 0;
 	double cost;
 	reset_supervisor();
+	char filename[11] = "trace_.csv";
 
 	float hyperparameters[BUFFER_SIZE];
 	hyperparameters[ALPHA] = 100.0;
@@ -182,10 +228,10 @@ int main(int argc, char *args[]) {
 	hyperparameters[BETA_F] = 1.0;
 	hyperparameters[THETA_L] = 1.0;
 	hyperparameters[THETA_F] = 0.0;
-	hyperparameters[LAMBDA] = 50.0;
-	hyperparameters[IOTA] = 0.0003;
-	hyperparameters[K_A] = 100;
-	hyperparameters[K_B] = 400;
+	hyperparameters[LAMBDA] = 10.0;
+	hyperparameters[IOTA] = 0.0005;
+	hyperparameters[K_A] = 200;
+	hyperparameters[K_B] = 500;
 	hyperparameters[K_C] = 0.001;
 	hyperparameters[EPSILON_L] = 0.4;
 	
@@ -196,10 +242,14 @@ int main(int argc, char *args[]) {
 
 	for(int i = 0; i< 15; i++)
 	{
+
+		snprintf(filename, 11, "trace%d.csv", i);
+		sup_init_log(filename);
 		printf("Run %d\n", i);
 		reset_simulation(hyperparameters);
-		cost = run_simulation(print_enabled);
+		cost = run_simulation(print_enabled,filename);
 		printf("metric = %f\n", cost);
+		fclose(fp);
 	}
 	
 	return 0;

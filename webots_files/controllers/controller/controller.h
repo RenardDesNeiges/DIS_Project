@@ -40,9 +40,9 @@
 #define COS_PI_6 0.86602540378
 
 static pose_t ref_poses[ROBOT_NUMBER] = {  {.x = 0, .y = 0, .heading = 0},
-                                    {.x = -FORMATION_WIDTH, .y = 0, .heading = 0},
                                     {.x = SIN_PI_6*FORMATION_WIDTH, .y = COS_PI_6*FORMATION_WIDTH, .heading = 0},
-                                    {.x = SIN_PI_6*FORMATION_WIDTH, .y = -COS_PI_6*FORMATION_WIDTH, .heading = 0}};
+                                    {.x = SIN_PI_6*FORMATION_WIDTH, .y = -COS_PI_6*FORMATION_WIDTH, .heading = 0},
+                                    {.x = -FORMATION_WIDTH, .y = 0, .heading = 0}};
 
 #endif
 
