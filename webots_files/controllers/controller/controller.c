@@ -199,6 +199,95 @@ void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pos
     
 }
 
+void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_RADIUS, double relative_pos[ROBOT_NUMBER][3]){
+
+    const double *message_direction;
+    double message_rssi; // Received Signal Strength indicator
+    double bearing;
+    double range;
+    char *rbbuffer; // Buffer for the receiver node
+    int other_robot_id;
+    float relative_speed[ROBOT_NUMBER][2];    // Speeds calculated with Reynold's rules
+
+    int i, j, k;                    // Loop counters
+    float rel_avg_loc[2] = {0,0};   // Flock average positions
+    float rel_avg_speed[2] = {0,0}; // Flock average speeds
+    float cohesion[2] = {0,0};
+    float dispersion[2] = {0,0};
+    float consistency[2] = {0,0};
+    
+    send_ping();
+
+    //printf("relative_pos:%f\n",relative_pos[0][0]);
+
+    while (wb_receiver_get_queue_length(receiver) > 0) {
+
+        rbbuffer = (char*) wb_receiver_get_data(receiver);
+        message_direction = wb_receiver_get_emitter_direction(receiver);
+        message_rssi = wb_receiver_get_signal_strength(receiver);
+
+        double y = message_direction[2];
+        double x = message_direction[1];
+
+        bearing = -atan2(y,x);
+        bearing = bearing + robot_pose.heading; // find the relative theta;
+        printf("bearing:%f\n",bearing);
+        range = sqrt((1/message_rssi));
+        printf("range:%f\n",range);
+
+        other_robot_id = (int)(rbbuffer[5]-'0');
+        printf("%d\n",other_robot_id);
+
+        prev_relative_pos[other_robot_id][0] = relative_pos[other_robot_id][0];
+        prev_relative_pos[other_robot_id][1] = relative_pos[other_robot_id][1];
+
+        relative_pos[other_robot_id][0] = range*cos(bearing);  // relative x pos
+        relative_pos[other_robot_id][1] = -1.0 * range*sin(bearing);   // relative y pos
+
+        relative_speed[other_robot_id][0] = ((double)1000/(double)TIME_STEP)*(relative_pos[other_robot_id][0]-prev_relative_pos[other_robot_id][0]);
+        relative_speed[other_robot_id][1] = ((double)1000/(double)TIME_STEP)*(relative_pos[other_robot_id][1]-prev_relative_pos[other_robot_id][1]); 
+         
+        wb_receiver_next_packet(receiver);
+    }
+    
+    for(int i = 0; i<ROBOT_NUMBER; i++){
+        if(i!= robot_id){
+            for (j=0;j<2;j++){
+                rel_avg_speed[j] += relative_speed[i][j]; //Compute averages over the whole flock without considering yourself
+                rel_avg_loc[j] += relative_pos[i][j];
+                }
+            if(pow(relative_pos[i][0],2)+pow(relative_pos[i][1],2) < RULE2_RADIUS){
+                for (j=0;j<2;j++) {
+                    dispersion[j] -= 1/relative_pos[i][j]; // Rule 2 - Dispersion/Separation: keep far enough from flockmates
+                }
+            }
+        }
+    }
+
+
+    printf("rel_avg_speed.x:%f\n",rel_avg_speed[0]);
+
+    for (j=0;j<2;j++){
+        cohesion[j] = rel_avg_loc[j]/(ROBOT_NUMBER-1);      // Rule 1 - Aggregation/Cohesion: move towards the center of mass
+        consistency[j] = rel_avg_speed[j]/(ROBOT_NUMBER-1); // Rule 3 - Consistency/Alignment: match the speeds of flockmates
+    }
+
+
+    //aggregation of all behaviors with relative influence determined by weights
+    printf("dispersion: %f\n",dispersion[0]);
+    printf("cohesion: %f\n",cohesion[0]);
+    printf("consistency: %f\n",consistency[0]);
+    double rey_x = w_dispersion * dispersion[0] + w_cohesion * cohesion[0] + w_consistency * consistency[0];
+    double rey_y = w_dispersion * dispersion[1] + w_cohesion * cohesion[1] + w_consistency * consistency[1];
+    reynold->x = rey_x;
+    reynold->y = rey_y;
+    reynold->heading = atan2(rey_x,rey_y);
+    printf("x : %f\n",reynold->x);
+    printf("y : %f\n",reynold->y);
+    printf("heading : %f\n",reynold->heading);
+
+}
+
 void local_avoidance_controller(pose_t *local, pose_t robot)
 {
     double gamma[8] = {-M_PI/12,-M_PI/2,-3*M_PI/2,-(5/6)*M_PI,M_PI/12,M_PI/2,3*M_PI/2,(5/6)*M_PI}; // IR sensor angles
