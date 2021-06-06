@@ -289,20 +289,24 @@ void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, do
 {   
     /* get the local obstacle avoidance sensors */
 
-    double weights[8] = {1,1,1,0,1,1,1,0}; // IR sensor angles
-    double gamma[8] = {-M_PI/12,-M_PI/2,-3*M_PI/2,-(5/6)*M_PI,M_PI/12,M_PI/2,3*M_PI/2,(5/6)*M_PI}; // IR sensor angles
-    double ox = 0, oy = 0, angle;
+    int obs = 0;
+    double gamma[8] = {1,0.5,0.25,0,0,-0.25,-0.5,-1}; // IR sensor angles
+    double angle = 0;
     for(int i = 0; i<8; i++){
         prox_value[i] = wb_distance_sensor_get_value(prox_address[i]);
         if(prox_value[i] < PROX_THRESHOLD)
             prox_value[i] = 0;
-        ox += prox_value[i] * cos(gamma[i] + robot.heading) * weights[i];
-        oy += prox_value[i] * sin(gamma[i] + robot.heading) * weights[i];
+        angle += prox_value[i] * gamma[i];
+        printf("%f,",prox_value[i]);
+        if(prox_value[i] > 0.01) 
+        {obs = 1;}
     } 
-    angle = atan2(oy,ox);
+    printf("\n");
+
+    // printf("u = (%f,%f), a=%f\n", goal.x,goal.y, angle);
 
     /* if we have no sensor readings run a simple unicycle-like controller */
-    if( (ox == 0 && oy == 0) || (fabs(angle-atan2(goal.y, goal.x))) >= M_PI )
+    if(obs==0)
     {
         double beta = atan2(goal.y, goal.x);
         double alpha = robot.heading - beta;
@@ -336,12 +340,14 @@ void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, do
     }    /* else run simple wall following controller */
     else
     {
+        //reset integrator we don't want to integrate error when local is
+        cix = 0;
+        ciy = 0;
 
-        
-        if(angle-robot.heading < THRESH_TURN)
-            turn = -1;
-        if(angle-robot.heading > THRESH_TURN)
-            turn = 1;
+        // printf("%f\n",angle-robot.heading);
+        if(angle > 0) turn =-1;
+        else turn = 1;
+
 
         // if( fabs(angle-robot.heading) < 1)
         // {
@@ -352,9 +358,12 @@ void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, do
         // else{
             //rotate and advance
             //*omega = something
-            *omega = robot.heading - angle + M_PI/2*turn +0.2*turn;
-            *v = 10*sin(fabs(robot.heading - angle)); //lol
+            *omega = -angle;
+            *v = 50; //lol
         // }
+
+        if(turn == -1) printf("r\n");
+        if(turn == 1) printf("l\n");
 
     }
 

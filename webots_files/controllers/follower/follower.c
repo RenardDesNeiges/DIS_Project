@@ -58,15 +58,13 @@ double hyperparameters[BUFFER_SIZE];
 
 /* hyperparameters, in PSO those are set according to the hyperparameter buffer */
 
-
-double alpha = 0.005;					// obstacle avoidance weight
-double beta = 3.0;						// consensur weight
+double beta = 1.0;						// consensur weight
 double theta = 0.0;						// migration vector weight
 double lambda = 10.0;					// leader bias in consensus vector
 double iota = 0.005;						// integrator term weight in consensus
-double ka = 100;						// ka term of unicyle controller (see report for details)
-double kb = 50;							// kb term of unicyle controller (see report for details)
-double kc = 0.001;						// kc term of unicyle controller (see report for details)
+double ka = 2;						// ka term of unicyle controller (see report for details)
+double kb = 5;							// kb term of unicyle controller (see report for details)
+double kc = 0.0001;						// kc term of unicyle controller (see report for details)
 double kp = 1.0;						// proportional term of consensus (redundant with beta --> 1)
 double w[ROBOT_NUMBER]; 				// weight matrix collumn of consensus controller
 
@@ -139,7 +137,6 @@ int main()
 
 void set_variables_to_hyperparameters()
 {
-	alpha = hyperparameters[ALPHA];
 	beta = hyperparameters[BETA_F];
 	theta = hyperparameters[THETA_F];
 	lambda = hyperparameters[LAMBDA]; w[0] = lambda; //leader bias

@@ -23,7 +23,7 @@
 // #define TIME_INIT 5		        // Time in second
 #define TIME_INIT 1		        // Time in second
 #define WHEEL_RADIUS 20.5
-double wheel_speed_threshold = WS_THRESH; //max value minus a small epsilon, lowered so that the followers can follow
+double wheel_speed_threshold = WS_THRESH*0.8; //max value minus a small epsilon, lowered so that the followers can follow
 
 
 /*DEFINITIONS*/
@@ -59,14 +59,13 @@ double w_left, w_right; 				// left and right wheel speeds
 double hyperparameters[BUFFER_SIZE];	// hyperparameter vector (buffer from supervisor for PSO)
 
 /* hyperparameters, in PSO those are set according to the hyperparameter buffer */
-double alpha = 0.005;					// obstacle avoidance weight
 double beta = 0.0;						// consensur weight
 double theta = 1.0;						// migration vector weight
 double lambda = 10.0;					// leader bias in consensus vector
 double iota = 0.005;						// integrator term weight in consensus
-double ka = 100;						// ka term of unicyle controller (see report for details)
-double kb = 50;							// kb term of unicyle controller (see report for details)
-double kc = 0.001;						// kc term of unicyle controller (see report for details)
+double ka = 1;						// ka term of unicyle controller (see report for details)
+double kb = 5;							// kb term of unicyle controller (see report for details)
+double kc = 0.0001;						// kc term of unicyle controller (see report for details)
 double kp = 1.0;						// proportional term of consensus (redundant with beta --> 1)
 double w[ROBOT_NUMBER]; 				// weight matrix collumn of consensus controller
 
@@ -143,7 +142,6 @@ int main()
 
 void set_variables_to_hyperparameters()
 {
-	alpha = hyperparameters[ALPHA];
 	beta = hyperparameters[BETA_L];
 	theta = hyperparameters[THETA_L];
 	lambda = hyperparameters[LAMBDA];  w[0] = lambda; //leader bias
@@ -166,7 +164,7 @@ void control_update()
 
 	// local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
 
-	control_vector = pose_add(pose_scale(theta,migration_vector), pose_scale(beta,consensus_vector));
+	control_vector = migration_vector;//pose_add(pose_scale(theta,migration_vector), pose_scale(beta,consensus_vector));
 	
 
 	unicycle_controller(&u_omega, &u_v, loc_get_pose(), control_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)

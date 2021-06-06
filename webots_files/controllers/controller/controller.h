@@ -13,8 +13,8 @@
 #define OBSTACLE_BUFFER_SIZE 100
 #define MAX_OBSTACLE_AGE 100
 
-#define MIGRATION_X 0
-#define MIGRATION_Y -4
+#define MIGRATION_X 100
+#define MIGRATION_Y 0
 
 #include <webots/robot.h>
 #include <webots/motor.h>
@@ -28,11 +28,20 @@
 
 /* if defined, enables a second receiver on the epucks that listen for a PSO supervisor
     comment out for non supervised behavior */
-#define PSO
+// #define PSO
 
 /* formation positions */
 
 #define FORMATION_WIDTH 0.4
+
+#if (ROBOT_NUMBER == 1)
+
+#define SIN_PI_6 0.5
+#define COS_PI_6 0.86602540378
+
+static pose_t ref_poses[ROBOT_NUMBER] = {  {.x = 0, .y = 0, .heading = 0}};
+
+#endif
 
 #if (ROBOT_NUMBER == 4)
 

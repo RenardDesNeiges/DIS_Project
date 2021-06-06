@@ -23,7 +23,7 @@
 #include "../communication/communication.h"
 #include "../controller/controller.h"
 
-#define SIM_TIME 1200
+#define SIM_TIME 2200
 
 /*CONSTANTES*/
 #define MAX_SPEED_WEB 6.28      // Maximum speed webots
@@ -273,15 +273,15 @@ int main(int argc, char *args[]) {
 	float hyperparameters[BUFFER_SIZE];
 	hyperparameters[ALPHA] = 100.0;
 	hyperparameters[BETA_L] = 0.0;
-	hyperparameters[BETA_F] = 0.08;
+	hyperparameters[BETA_F] = 1.0;
 	hyperparameters[THETA_L] = 1.0;
 	hyperparameters[THETA_F] = 0.0;
-	hyperparameters[LAMBDA] = 2.0;
-	hyperparameters[IOTA] = 0.0004;
-	hyperparameters[K_A] = 200;
-	hyperparameters[K_B] = 500;
-	hyperparameters[K_C] = 0.001;
-	hyperparameters[EPSILON_L] = 0.7;
+	hyperparameters[LAMBDA] = 10.0;
+	hyperparameters[IOTA] = 0.005;
+	hyperparameters[K_A] = 2;
+	hyperparameters[K_B] = 5;
+	hyperparameters[K_C] = 0.0001;
+	hyperparameters[EPSILON_L] = 0.5;
 	
 	for(int i = 0; i<10; i++)
 	{
