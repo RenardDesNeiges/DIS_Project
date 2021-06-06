@@ -60,18 +60,18 @@ double hyperparameters[BUFFER_SIZE];	// hyperparameter vector (buffer from super
 double alpha = 0.005;					// obstacle avoidance weight
 double beta = 1.0;						// reynolds
 double theta = 1.0;						// migration vector weight
-double lambda = 10.0;					// leader bias in consensus vector
-double iota = 0.005;						// integrator term weight in consensus
+
+			
 double ka = 100;						// ka term of unicyle controller (see report for details)
 double kb = 50;							// kb term of unicyle controller (see report for details)
 double kc = 0.001;						// kc term of unicyle controller (see report for details)
-double kp = 1.0;						// proportional term of consensus (redundant with beta --> 1)
+
+double w_cohesion = 0.01;
+double w_dispersion = 0.002;
+double w_consistency = 0.001;
+double rule2radius = 0.2;
 double w[ROBOT_NUMBER]; 				// weight matrix collumn of consensus controller
 
-double w_cohesion = 0.15;
-double w_dispersion = 0.002;
-double w_consistency = 0.2;
-double rule2radius = 0.1;
 
 
 //---------------------------------------------------------------------------------------//
@@ -146,15 +146,15 @@ int main()
 
 void set_variables_to_hyperparameters()
 {
-	alpha = hyperparameters[ALPHA];
-	beta = hyperparameters[BETA_L];
-	theta = hyperparameters[THETA_L];
-	lambda = hyperparameters[LAMBDA];  w[0] = lambda; //leader bias
-	iota = hyperparameters[IOTA];
+
 	ka = hyperparameters[K_A];
 	kb = hyperparameters[K_B];
 	kc = hyperparameters[K_C];
 	wheel_speed_threshold = WS_THRESH * hyperparameters[EPSILON_L];
+	w_cohesion = hyperparameters[FLOCK_COHESION];
+	w_dispersion = hyperparameters[FLOCK_DISPERSION];
+	w_consistency = hyperparameters[FLOCK_CONSISTENCY];
+	rule2radius = hyperparameters[FLOCK_RULE2_RADIUS];
 }
 
 void control_update()  
