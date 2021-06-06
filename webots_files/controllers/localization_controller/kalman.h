@@ -21,7 +21,11 @@
 
 
 
-#define MODE_KAL ACC_CONTROLLED
+#define MODE_KAL ACC_CONTROLLED_UPG
+
+
+
+
 
 
 #if MODE_KAL == ACC_CONTROLLED
@@ -38,7 +42,7 @@
 #define N_STATES 6
 #define N_OBSERVABLES 3
 #define N_FREQ 2
-#define N_CONTROL_INPUT 2
+#define N_CONTROL_INPUT 3
 
 #endif
 
@@ -62,13 +66,17 @@ void kal_init_kalman(double state_0[N_STATES], double  cov_0[N_STATES][N_STATES]
 			  double Q[N_STATES][N_STATES], double C[N_FREQ][N_OBSERVABLES][N_STATES],
 			  double D[N_FREQ][N_OBSERVABLES][N_CONTROL_INPUT],double R[N_FREQ][N_OBSERVABLES][N_OBSERVABLES]);
 void kal_predict(double u[N_CONTROL_INPUT]);
+
 void kal_change_A(double new_A[N_STATES][N_STATES]);
 void kal_change_B(double new_B[N_STATES][N_CONTROL_INPUT]);
+void kal_change_Q(double new_Q[N_STATES][N_STATES]);
 
 void kal_update_freq(int freq, double y_meas[N_OBSERVABLES]);
+
 void kal_get_pose(double pose[N_STATES]);
 void kal_get_cov(double cov[N_STATES][N_STATES]);
 
+void kal_get_Q(double Q[N_STATES][N_STATES]);
 
 
 #endif

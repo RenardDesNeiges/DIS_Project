@@ -71,10 +71,7 @@ void migration_urge(pose_t *migration, pose_t robot, pose_t goal);
 void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pose, double kp, double ki, int robot_id, double* w);
 
 // returns a reynold controller vector (as a pose structure), passed by a pointer
-void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double RULE2_RADIUS, double relative_pos[ROBOT_NUMBER][3]);
-
-// returns a local avoidance vector (as a pose structure), passed by a pointer
-void local_avoidance_controller(pose_t *local, pose_t robot);
+void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double rule2radius);
 
 // returns a local avoidance vector (as a pose structure), passed by a pointer
 void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, double ka, double kb, double kc);

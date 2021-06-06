@@ -23,8 +23,7 @@
 #include "../communication/communication.h"
 #include "../controller/controller.h"
 
-#define ROBOT_NUMBER 4
-#define SIM_TIME 500
+#define SIM_TIME 1200
 
 /*CONSTANTES*/
 #define MAX_SPEED_WEB 6.28      // Maximum speed webots
@@ -64,7 +63,7 @@ static WbFieldRef robs_rotation[ROBOT_NUMBER];
 WbDeviceTag emitter_device;
 
 double start_angle[4] = {0.0,1.0,0.0,-1.570796};
-double start_pose[4][3] = {{-2.9,0,-0.05},{-2.9,0,0.11},{-2.9,0,-0.2},{-2.9,0,0.26}};
+double start_pose[5][3] = {{-2.9,0,-0.05},{-2.9,0,0.11},{-2.9,0,-0.2},{-2.9,0,0.26},{-2.9,0,0.32}};
 
 double loc[ROBOT_NUMBER][4];
 double avg_loc_team[4];
@@ -332,7 +331,6 @@ int main(int argc, char *args[]) {
 	reset_supervisor();
     	
     wb_robot_step(10*TIME_STEP); /* wait for the robots to initialize */
-	
 	
     printf("Initialized\n");
     

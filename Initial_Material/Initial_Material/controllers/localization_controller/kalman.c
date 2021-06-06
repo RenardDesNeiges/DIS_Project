@@ -339,7 +339,10 @@ void kal_update_freq(int freq, double y_meas[N_OBSERVABLES])
 	}
 }
 
-
+/**
+ * @brief	Getter for the state x
+ * @param[out]	pose[N_STATE]	the last computed state
+ */
 void kal_get_pose(double pose[N_STATES])
 {
 	for(int i = 0;i<N_STATES;i++)
@@ -348,6 +351,25 @@ void kal_get_pose(double pose[N_STATES])
 	}
 }
 
+/**
+ * @brief	Getter for the matrix Q
+ * @param[out]	Q[N_STATE][N_STATES] The process noise matrix
+ */
+void kal_get_Q(double Q[N_STATES][N_STATES])
+{
+	for(int i =0; i<N_STATES;i++)
+		for(int j=0; j<N_STATES;j++)
+			Q[i][j] = kalman.Q[i][j];
+}
+
+/**
+ * @brief      Do an error test if the result is true write the message in the stderr.
+ *
+ * @param[in]  test     The error test to run
+ * @param[in]  message  The error message
+ *
+ * @return     true if there is an error
+ */
 bool kal_error(bool test, const char * message, int line, const char * fileName)
 {
   if (test) 
@@ -362,11 +384,4 @@ bool kal_error(bool test, const char * message, int line, const char * fileName)
   }
 
   return false;
-}
-
-void kal_get_Q(double Q[N_STATES][N_STATES])
-{
-	for(int i =0; i<N_STATES;i++)
-		for(int j=0; j<N_STATES;j++)
-			Q[i][j] = kalman.Q[i][j];
 }
