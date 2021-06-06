@@ -6,7 +6,7 @@ minimizedPerspectives: 000000ff00000000fd0000000300000000000001c000000418fc01000
 maximizedDockId: -1
 centralWidgetVisible: 1
 orthographicViewHeight: 1
-textFiles: 0 "controllers/follower/follower.c" "controllers/leader/leader.c"
+textFiles: 0 "controllers/flocking/flocking.c" "controllers/controller/controller.c"
 consoles: Console:All:All
 renderingDevicePerspectives: epuck0(1):camera;1;1;0;0
 renderingDevicePerspectives: epuck0:camera;1;1;0;0

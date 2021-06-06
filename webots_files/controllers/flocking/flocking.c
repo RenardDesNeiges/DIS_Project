@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <string.h>
 
@@ -46,11 +45,10 @@ int robot_id;							// id of the robot in webots
 /* controller variables */
 
 pose_t migration_vector;				// control vector of the migratory urge
-pose_t obstacle_avoidance_vector;		// control vector of the obstacle avoidance
-pose_t consensus_vector;				// control vector of the consensus controller urge
-pose_t goal_pose[ROBOT_NUMBER];			// control poses of the consensus controller
+pose_t reynolds_vector;				// control vector of the consensus controller urge
 pose_t migration_goal;					// goal of migratory urge
 pose_t control_vector;					// summed_up control vector
+pose_t goal_pose[ROBOT_NUMBER];			// control poses of the consensus controller
 double u_omega, u_v;					// unicycle model control vector
 double w_left, w_right; 				// left and right wheel speeds
 
@@ -60,7 +58,7 @@ double hyperparameters[BUFFER_SIZE];	// hyperparameter vector (buffer from super
 
 /* hyperparameters, in PSO those are set according to the hyperparameter buffer */
 double alpha = 0.005;					// obstacle avoidance weight
-double beta = 0.0;						// consensur weight
+double beta = 1.0;						// reynolds
 double theta = 1.0;						// migration vector weight
 double lambda = 10.0;					// leader bias in consensus vector
 double iota = 0.005;						// integrator term weight in consensus
@@ -69,6 +67,11 @@ double kb = 50;							// kb term of unicyle controller (see report for details)
 double kc = 0.001;						// kc term of unicyle controller (see report for details)
 double kp = 1.0;						// proportional term of consensus (redundant with beta --> 1)
 double w[ROBOT_NUMBER]; 				// weight matrix collumn of consensus controller
+
+double w_cohesion = 0.15;
+double w_dispersion = 0.002;
+double w_consistency = 0.2;
+double rule2radius = 0.1;
 
 
 //---------------------------------------------------------------------------------------//
@@ -159,14 +162,11 @@ void control_update()
 	//main update function
 
 	migration_urge(&migration_vector, loc_get_pose(), migration_goal); 			// get the migration vector (stored in the migration_vector global variable)
-	
-	// printf("ox = %f, oy = %f \Nur ", obstacle_avoidance_vector.x, obstacle_avoidance_vector.y);
 
-	consensus_controller(&consensus_vector, loc_get_pose(), goal_pose, kp, iota, robot_id, w);
+	// consensus_controller(&consensus_vector, loc_get_pose(), goal_pose, kp, iota, robot_id, w);
+	reynolds_controller(&reynolds_vector, loc_get_pose(), w_cohesion,w_dispersion,w_consistency, robot_id, rule2radius);
 
-	// local_avoidance_controller(&obstacle_avoidance_vector, loc_get_pose()); 			// get the obstacle avoidance vector (stored in the obstacle_avoidance_vector global variable)
-
-	control_vector = pose_add(pose_scale(theta,migration_vector), pose_scale(beta,consensus_vector));
+	control_vector = pose_add(pose_scale(theta,migration_vector), pose_scale(beta,reynolds_vector));
 	
 
 	unicycle_controller(&u_omega, &u_v, loc_get_pose(), control_vector, ka, kb, kc); 	// get the unicycle control law from the computed global movement vector,  (stored in the unicycle_control global variable)

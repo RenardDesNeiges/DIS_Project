@@ -10,7 +10,7 @@ WorldInfo {
 }
 Viewpoint {
   orientation -0.449185316963814 -0.7531018981374251 -0.4806974953605701 1.9590946298542942
-  position -3.5985481028677766 2.6025614812336664 -0.18923414242360043
+  position -5.648859365960478 7.299216165798262 -0.49756621565536646
 }
 PointLight {
   intensity 0.5
@@ -28,6 +28,7 @@ Background {
 }
 DEF ground Solid {
   translation -1.5 0 0
+  scale 10 10 10
   children [
     Shape {
       appearance Appearance {
@@ -76,79 +77,6 @@ DEF ground Solid {
     }
   ]
   boundingObject USE ground_geo
-}
-DEF long_rock_3 Solid {
-  translation -3 0 0
-  rotation 0 1 0 1.5708
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 1 1 1
-        }
-        texture ImageTexture {
-          url [
-            "textures/stone-2.png"
-          ]
-        }
-      }
-      geometry Box {
-        size 0.6 0.2 0.01
-      }
-    }
-  ]
-  name "short brick"
-  boundingObject DEF U_END_BOX Box {
-    size 0.6 0.2 0.01
-  }
-}
-DEF long_rock_4 Solid {
-  translation -2.9 0 0.3
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 1 1 1
-        }
-        texture ImageTexture {
-          url [
-            "textures/stone-2.png"
-          ]
-        }
-      }
-      geometry Box {
-        size 0.2 0.2 0.01
-      }
-    }
-  ]
-  name "short brick"
-  boundingObject DEF U_END_BOX Box {
-    size 0.2 0.2 0.01
-  }
-}
-DEF long_rock_6 Solid {
-  translation -2.9 0 -0.3
-  children [
-    Shape {
-      appearance Appearance {
-        material Material {
-          diffuseColor 1 1 1
-        }
-        texture ImageTexture {
-          url [
-            "textures/stone-2.png"
-          ]
-        }
-      }
-      geometry Box {
-        size 0.2 0.2 0.01
-      }
-    }
-  ]
-  name "short brick"
-  boundingObject DEF U_END_BOX Box {
-    size 0.2 0.2 0.01
-  }
 }
 DEF rock Solid {
   translation 0.511727 0 -0.585387

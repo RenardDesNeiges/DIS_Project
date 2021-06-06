@@ -1,7 +1,7 @@
 #ifndef COMMUNICATION
 #define COMMUNICATION 
 
-#define ROBOT_NUMBER 4
+#define ROBOT_NUMBER 5
 #define BUFFER_SIZE 11
 
 // Hyperparameter vector

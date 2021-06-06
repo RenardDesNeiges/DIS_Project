@@ -16,8 +16,6 @@
 #define MIGRATION_X 4
 #define MIGRATION_Y 0
 
-//#define PSO
-
 #include <webots/robot.h>
 #include <webots/motor.h>
 #include <webots/gps.h>
@@ -26,6 +24,42 @@
 #include <webots/distance_sensor.h>
 #include "../localization_controller/odometry.h"
 #include "../communication/communication.h"
+
+
+/* if defined, enables a second receiver on the epucks that listen for a PSO supervisor
+    comment out for non supervised behavior */
+// #define PSO
+
+/* formation positions */
+
+#define FORMATION_WIDTH 0.4
+
+#if (ROBOT_NUMBER == 4)
+
+#define SIN_PI_6 0.5
+#define COS_PI_6 0.86602540378
+
+static pose_t ref_poses[ROBOT_NUMBER] = {  {.x = 0, .y = 0, .heading = 0},
+                                    {.x = SIN_PI_6*FORMATION_WIDTH, .y = COS_PI_6*FORMATION_WIDTH, .heading = 0},
+                                    {.x = SIN_PI_6*FORMATION_WIDTH, .y = -COS_PI_6*FORMATION_WIDTH, .heading = 0},
+                                    {.x = -FORMATION_WIDTH, .y = 0, .heading = 0}};
+
+#endif
+
+#if (ROBOT_NUMBER == 5)
+
+static pose_t ref_poses[ROBOT_NUMBER] = {  {.x = 0, .y = 0, .heading = 0},
+                                    {.x = -FORMATION_WIDTH, .y = 0, .heading = 0},
+                                    {.x = 0, .y = -FORMATION_WIDTH, .heading = 0},
+                                    {.x = 0, .y = FORMATION_WIDTH, .heading = 0},
+                                    {.x = FORMATION_WIDTH, .y = 0, .heading = 0}};
+
+#endif
+
+//wheel speed threshold
+#define WS_THRESH 6.27
+
+/* functions */
 
 //initializes the proximity sensors
 void init_prox_sensor();
@@ -36,8 +70,8 @@ void migration_urge(pose_t *migration, pose_t robot, pose_t goal);
 // returns a consensus controller vector (as a pose structure), passed by a pointer
 void consensus_controller(pose_t *consensus, pose_t robot_pose, pose_t *goal_pose, double kp, double ki, int robot_id, double* w);
 
-// returns a local avoidance vector (as a pose structure), passed by a pointer
-void local_avoidance_controller(pose_t *local, pose_t robot);
+// returns a reynold controller vector (as a pose structure), passed by a pointer
+void reynolds_controller(pose_t *reynold, pose_t robot_pose, double w_cohesion, double w_dispersion, double w_consistency, int robot_id, double rule2radius);
 
 // returns a local avoidance vector (as a pose structure), passed by a pointer
 void unicycle_controller(double *omega, double *v, pose_t robot, pose_t goal, double ka, double kb, double kc);
